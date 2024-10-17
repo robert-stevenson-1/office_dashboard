@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Temperature and Humidity Data</title>
+
+    <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+
+        header {
+            background-color: #3f51b5;
+            color: white;
+            text-align: center;
+            padding: 15px 0;
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .info-container {
+            display: flex;
+            justify-content: space-evenly;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            flex-wrap: wrap;
+        }
+
+        .info, .bus-info {
+            flex: 1;
+            min-width: 300px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            text-align: center;
+        }
+
+        .info p, .bus-info p {
+            font-size: 1.5em;
+            margin: 10px 0;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-evenly;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .chart-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            min-width: 400px;
+            height: 400px;
+            flex: 1;
+        }
+
+        footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #3f51b5;
+            color: white;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    Real-Time Temperature and Humidity Data
+    
+    <img src="{{ url_for('static', filename='duck.png') }}" height="30px">
+</header>
+
+<div class="info-container">
+    <div class="info">
+        <p>Current Temperature: <span id="currentTemperature">--</span> °C</p>
+        <p>Average Temperature (Last 5 minutes): <span id="averageTemperature5Min">--</span> °C</p>
+        <p>Average Temperature (Last 5 days): <span id="averageTemperature5Days">--</span> °C</p>
+    </div>
+
+    <div class="bus-info">
+        <h2>Next Riseholme Bus LAC Stop</h2>
+        <p id="next-departure">Loading next departure...</p>
+        <p id="next-arrival">Loading next arrival...</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="chart-container" id="temperatureChart"></div>
+    <div class="chart-container" id="humidityChart"></div>
+</div>
+
+<footer>
+    &copy; 2024 Robert Stevenson
+    
+    <img src="{{ url_for('static', filename='duck.png') }}" height="15px">
+</footer>
+
+<script>
+    const socket = io();
+
+    // Initialize Plotly charts
+    const temperatureLayout = {
+        title: 'Temperature (°C)',
+        xaxis: { title: 'Time' },
+        yaxis: { title: 'Temperature (°C)' },
+        margin: { t: 50, r: 30, l: 50, b: 50 }
+    };
+    const humidityLayout = {
+        title: 'Humidity (%)',
+        xaxis: { title: 'Time' },
+        yaxis: { title: 'Humidity (%)' },
+        margin: { t: 50, r: 30, l: 50, b: 50 }
+    };
+
+    Plotly.newPlot('temperatureChart', [{ x: [], y: [], mode: 'lines', line: { color: 'red' } }], temperatureLayout);
+    Plotly.newPlot('humidityChart', [{ x: [], y: [], mode: 'lines', line: { color: 'blue' } }], humidityLayout);
+
+    socket.on('new_data', function (data) {
+        Plotly.extendTraces('temperatureChart', { x: [[data.time]], y: [[data.temperature]] }, [0]);
+        Plotly.extendTraces('humidityChart', { x: [[data.time]], y: [[data.humidity]] }, [0]);
+
+        document.getElementById('currentTemperature').innerText = data.current_temperature.toFixed(2);
+        document.getElementById('averageTemperature5Min').innerText = data.average_temperature_5min.toFixed(2);
+        document.getElementById('averageTemperature5Days').innerText = data.average_temperature_5days.toFixed(2);
+    });
+
+    // Bus schedule logic
+    const departures = ["07:30", "08:30", "13:00", "16:40", "17:40"];
+    const arrivals = ["08:25", "12:55", "16:35", "17:35"];
+
+    function getNextBus() {
+        const now = new Date();
+        const currentTime = now.getHours() * 60 + now.getMinutes(); // Minutes since midnight
+
+        for (let i = 0; i < departures.length; i++) {
+            const [depHour, depMin] = departures[i].split(':').map(Number);
+            const depTime = depHour * 60 + depMin;
+
+            if (depTime >= currentTime) {
+                document.getElementById("next-departure").textContent = `Departure: ${departures[i]}`;
+                document.getElementById("next-arrival").textContent = 
+                    arrivals[i] ? `Arrival: ${arrivals[i]}` : "Arrival: N/A";
+                return;
+            }
+        }
+
+        // If no more buses today, show the first departure of tomorrow
+        document.getElementById("next-departure").textContent = `Departure: ${departures[0]} (Tomorrow)`;
+        document.getElementById("next-arrival").textContent = 
+            arrivals[0] ? `Arrival: ${arrivals[0]}` : "Arrival: N/A";
+    }
+
+    getNextBus(); // Call on page load
+</script>
+
+</body>
+</html>
