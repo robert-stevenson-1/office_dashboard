@@ -12,7 +12,7 @@ readings.columns = ["time", "temp", "humidity"];
 # Parse the dateimte, and require an exact format match
 readings.time = pd.to_datetime(readings.time, format="%Y-%m-%d %H:%M:%S", exact=True);
 
-# readings = readings[readings.temp == 21.87];
+readings = readings[readings.time > datetime.datetime.fromtimestamp(1729184400.0)];
 sns.set_theme();
 
 plt.figure();
