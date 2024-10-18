@@ -1,13 +1,13 @@
 from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO, emit
-import serial
 import threading
 import time
 import datetime
 import csv
 import os
-import asyncio
-import aiohttp
+import socket
+import requests
+from xml.etree import ElementTree as ET
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -20,15 +20,17 @@ timestamps = []
 # CSV file to store the sensor data
 CSV_FILE = 'sensor_data.csv'
 
-# Replace with your actual serial port and baud rate
-SERIAL_PORT = '/dev/ttyUSB0'  # Update with your serial port
-BAUD_RATE = 115200
+# Socket settings (to communicate with serial_reader.py)
+HOST = '127.0.0.1'
+PORT = 65432
 
 # API endpoints and keys
 BBC_RSS_FEED = "http://feeds.bbci.co.uk/news/rss.xml"
 OPENWEATHER_API_KEY = "your_openweather_api_key"
 WEATHER_URL = "http://api.openweathermap.org/data/2.5/weather"
-
+HUMBERSIDE_AIRPORT_CODE = "HUY"
+FLIGHT_API_URL = "http://api.aviationstack.com/v1/flights"
+FLIGHT_API_KEY = "your_flightstack_api_key"  # Replace with your AviationStack API key
 
 # Function to load historical data from the CSV file when the server starts
 def load_data_from_csv():
@@ -103,82 +105,103 @@ def calculate_5_day_average():
     else:
         return 0  # Return 0 if no data is available for the last 5 days
 
-# Function to read data from the serial port
-def read_serial_data():
-    ser = serial.Serial(SERIAL_PORT, BAUD_RATE)
-    while True:
-        try:
-            if ser.in_waiting > 0:
-                # Read the line from the serial port, decode it, and strip any extraneous characters
-                line = ser.readline().decode('utf-8').strip()
+# Function to receive data from the socket connection
+def receive_socket_data():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((HOST, PORT))
+        s.listen()
 
-                # Example format: Temperature: 25.34 °C, Humidity: 60.23 %
-                if "Temperature" in line and "Humidity" in line:
-                    # Extract the temperature and humidity values from the string
-                    temp_value = float(line.split(" ")[1])
-                    humidity_value = float(line.split(" ")[4].strip('%'))
+        print(f"Listening on {HOST}:{PORT} for serial data...")
 
-                    # Log and broadcast the data
-                    log_and_send_data(temp_value, humidity_value)
-        except Exception as e:
-            print(f"Error reading serial data: {e}")
-
-# Asynchronous function to fetch BBC News
-async def fetch_bbc_news():
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(BBC_RSS_FEED) as response:
-                response_text = await response.text()
-                from xml.etree import ElementTree as ET
-                root = ET.fromstring(response_text)
-                items = root.findall(".//item")
-                news = []
-                for item in items[:5]:  # Get the latest 5 articles
-                    title = item.find("title").text
-                    link = item.find("link").text
-                    news.append({"title": title, "link": link})
-                return news
-        except Exception as e:
-            print(f"Error fetching BBC News: {e}")
-            return []
-
-# Asynchronous function to fetch weather data
-async def fetch_weather(city_id):
-    async with aiohttp.ClientSession() as session:
-        params = {
-            'id': city_id,
-            'appid': OPENWEATHER_API_KEY,
-            'units': 'metric'
-        }
-        try:
-            async with session.get(WEATHER_URL, params=params) as response:
-                data = await response.json()
-                weather = {
-                    'city': data['name'],
-                    'temperature': data['main']['temp'],
-                    'description': data['weather'][0]['description'],
-                    'icon': data['weather'][0]['icon']
-                }
-                return weather
-        except Exception as e:
-            print(f"Error fetching weather: {e}")
-            return {}
+        conn, addr = s.accept()
+        with conn:
+            print(f"Connected by {addr}")
+            while True:
+                try:
+                    data = conn.recv(1024)
+                    if not data:
+                        break
+                    # Parse received data (temperature, humidity)
+                    temp_value, humidity_value = data.decode('utf-8').strip().split(',')
+                    log_and_send_data(float(temp_value), float(humidity_value))
+                except Exception as e:
+                    print(f"Error receiving socket data: {e}")
 
 # Route to serve the main webpage
 @app.route('/')
 def home():
     return render_template('index.html')
 
-@app.route('/bbc-news')
-async def bbc_news():
-    news = await fetch_bbc_news()
-    return jsonify(news)
+# Route to fetch latest BBC news
+@app.route('/news')
+def news():
+    try:
+        # Fetch the BBC feed
+        bbc_response = requests.get(BBC_RSS_FEED)
+        bbc_response.raise_for_status()
 
-@app.route('/weather/<int:city_id>')
-async def get_weather_by_id(city_id):
-    weather = await fetch_weather(city_id)
-    return jsonify(weather)
+        # Parse the RSS feed
+        bbc_root = ET.fromstring(bbc_response.content)
+        bbc_items = bbc_root.findall(".//item")[:5]  # Get the latest 5 articles
+        news = []
 
+        for item in bbc_items:
+            title = item.find("title").text 
+            link = item.find("link").text
+            news.append({"title": title, "link": link})
+
+        return jsonify(news)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Route to fetch weather information
+@app.route('/weather/<city>')
+def get_weather(city):
+    params = {
+        'q': city,
+        'appid': OPENWEATHER_API_KEY,
+        'units': 'metric'  # Get temperature in Celsius
+    }
+    try:
+        response = requests.get(WEATHER_URL, params=params)
+        response.raise_for_status()
+        data = response.json()
+
+        # Extract relevant weather information
+        weather = {
+            'city': data['name'],
+            'temperature': data['main']['temp'],
+            'description': data['weather'][0]['description'],
+            'icon': data['weather'][0]['icon']
+        }
+        return jsonify(weather)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Route to fetch flight departure information from Humberside Airport
+@app.route('/departures')
+def departures():
+    try:
+        # Fetch flight data
+        response = requests.get(FLIGHT_API_URL, params={"access_key": FLIGHT_API_KEY, "dep_iata": HUMBERSIDE_AIRPORT_CODE})
+        response.raise_for_status()
+        
+        data = response.json()
+        departures = []
+
+        # Extract departure information
+        for flight in data.get("data", []):
+            departures.append({
+                "flight_number": flight["flight"]["iata"],
+                "destination": flight["departure"]["iata"],
+                "departure_time": flight["departure"]["estimated"],
+            })
+
+        return jsonify(departures)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# WebSocket connection handler to send historical data to newly connected clients
 @socketio.on('connect')
 def handle_connect():
     # Send the historical data (last 5 minutes) to the newly connected client
@@ -193,10 +216,10 @@ if __name__ == '__main__':
     # Load historical data from the CSV file when the server starts
     load_data_from_csv()
 
-    # Start a background thread to read serial data
-    serial_thread = threading.Thread(target=read_serial_data)
-    serial_thread.daemon = True
-    serial_thread.start()
+    # Start a background thread to receive data from the internal socket
+    socket_thread = threading.Thread(target=receive_socket_data)
+    socket_thread.daemon = True
+    socket_thread.start()
 
     # Start the Flask-SocketIO server
-    socketio.run(app, host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
