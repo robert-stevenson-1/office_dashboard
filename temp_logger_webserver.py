@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO, emit
 import serial
 import threading
@@ -6,6 +6,8 @@ import time
 import datetime
 import csv
 import os
+import asyncio
+import aiohttp
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -21,6 +23,12 @@ CSV_FILE = 'sensor_data.csv'
 # Replace with your actual serial port and baud rate
 SERIAL_PORT = '/dev/ttyUSB0'  # Update with your serial port
 BAUD_RATE = 115200
+
+# API endpoints and keys
+BBC_RSS_FEED = "http://feeds.bbci.co.uk/news/rss.xml"
+OPENWEATHER_API_KEY = "your_openweather_api_key"
+WEATHER_URL = "http://api.openweathermap.org/data/2.5/weather"
+
 
 # Function to load historical data from the CSV file when the server starts
 def load_data_from_csv():
@@ -103,7 +111,7 @@ def read_serial_data():
             if ser.in_waiting > 0:
                 # Read the line from the serial port, decode it, and strip any extraneous characters
                 line = ser.readline().decode('utf-8').strip()
-                
+
                 # Example format: Temperature: 25.34 °C, Humidity: 60.23 %
                 if "Temperature" in line and "Humidity" in line:
                     # Extract the temperature and humidity values from the string
@@ -115,10 +123,61 @@ def read_serial_data():
         except Exception as e:
             print(f"Error reading serial data: {e}")
 
+# Asynchronous function to fetch BBC News
+async def fetch_bbc_news():
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(BBC_RSS_FEED) as response:
+                response_text = await response.text()
+                from xml.etree import ElementTree as ET
+                root = ET.fromstring(response_text)
+                items = root.findall(".//item")
+                news = []
+                for item in items[:5]:  # Get the latest 5 articles
+                    title = item.find("title").text
+                    link = item.find("link").text
+                    news.append({"title": title, "link": link})
+                return news
+        except Exception as e:
+            print(f"Error fetching BBC News: {e}")
+            return []
+
+# Asynchronous function to fetch weather data
+async def fetch_weather(city_id):
+    async with aiohttp.ClientSession() as session:
+        params = {
+            'id': city_id,
+            'appid': OPENWEATHER_API_KEY,
+            'units': 'metric'
+        }
+        try:
+            async with session.get(WEATHER_URL, params=params) as response:
+                data = await response.json()
+                weather = {
+                    'city': data['name'],
+                    'temperature': data['main']['temp'],
+                    'description': data['weather'][0]['description'],
+                    'icon': data['weather'][0]['icon']
+                }
+                return weather
+        except Exception as e:
+            print(f"Error fetching weather: {e}")
+            return {}
+
 # Route to serve the main webpage
 @app.route('/')
 def home():
     return render_template('index.html')
+
+@app.route('/bbc-news')
+async def bbc_news():
+    news = await fetch_bbc_news()
+    return jsonify(news)
+
+@app.route('/weather/<int:city_id>')
+async def get_weather_by_id(city_id):
+    weather = await fetch_weather(city_id)
+    return jsonify(weather)
 
 @socketio.on('connect')
 def handle_connect():
