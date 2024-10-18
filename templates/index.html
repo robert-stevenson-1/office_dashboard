@@ -7,99 +7,50 @@
 
     <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Arial', sans-serif;
-            background-color: #f0f0f0;
-            color: #333;
-        }
-
-        header {
-            background-color: #3f51b5;
-            color: white;
-            text-align: center;
-            padding: 15px 0;
-            font-size: 2em;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .info-container {
-            display: flex;
-            justify-content: space-evenly;
-            gap: 20px;
-            padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-            flex-wrap: wrap;
-        }
-
-        .info, .bus-info {
-            flex: 1;
-            min-width: 300px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 15px;
-            text-align: center;
-        }
-
-        .info p, .bus-info p {
-            font-size: 1.5em;
-            margin: 10px 0;
-        }
-
-        .container {
-            display: flex;
-            justify-content: space-evenly;
-            flex-wrap: wrap;
-            gap: 20px;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        .chart-container {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            min-width: 400px;
-            height: 400px;
-            flex: 1;
-        }
-
-        footer {
-            text-align: center;
-            padding: 10px;
-            background-color: #3f51b5;
-            color: white;
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-        }
-    </style>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
 <header>
-    Real-Time Temperature and Humidity Data
+    Office Dashboard
     
     <img src="{{ url_for('static', filename='duck.png') }}" height="30px">
 </header>
 
 <div class="info-container">
     <div class="info">
+        <h2>Office Conditions</h2>
         <p>Current Temperature: <span id="currentTemperature">--</span> °C</p>
         <p>Average Temperature (Last 5 minutes): <span id="averageTemperature5Min">--</span> °C</p>
         <p>Average Temperature (Last 5 days): <span id="averageTemperature5Days">--</span> °C</p>
     </div>
 
     <div class="bus-info">
-        <h2>Next Riseholme Bus LAC Stop</h2>
+        <h2>Next Campus Linc Bus at LAC</h2>
         <p id="next-departure">Loading next departure...</p>
         <p id="next-arrival">Loading next arrival...</p>
+    </div>
+
+    <div class="info">
+        <h2>Latest BBC News</h2>
+        <ul id="bbcNewsList"></ul>
+    </div>
+
+    <!-- <div class="info" id="departuresInfo">
+        <h2>Latest Departures from Humberside Airport</h2>
+        <ul id="departuresList">
+            <li>Loading departures...</li>
+        </ul>
+    </div> -->
+
+    <div class="info" id="weatherInfo">
+        <h2>Weather Information</h2>
+        <p>Loading weather data...</p>
+    </div>
+
+    <div class="info" id="gone-pub" style="display: none; text-align: center; font-size: 2em; padding: 20px;">
+        Gone Pub 🍻
     </div>
 </div>
 
@@ -109,7 +60,7 @@
 </div>
 
 <footer>
-    &copy; 2024 Robert Stevenson
+    &copy; 2024 Duck Ltd.
     
     <img src="{{ url_for('static', filename='duck.png') }}" height="15px">
 </footer>
@@ -156,9 +107,9 @@
             const depTime = depHour * 60 + depMin;
 
             if (depTime >= currentTime) {
-                document.getElementById("next-departure").textContent = `Departure: ${departures[i]}`;
+                document.getElementById("next-departure").textContent = `Next Departure: ${departures[i]}`;
                 document.getElementById("next-arrival").textContent = 
-                    arrivals[i] ? `Arrival: ${arrivals[i]}` : "Arrival: N/A";
+                    arrivals[i] ? `Next Arrival: ${arrivals[i]}` : "Next Arrival: N/A";
                 return;
             }
         }
@@ -166,10 +117,112 @@
         // If no more buses today, show the first departure of tomorrow
         document.getElementById("next-departure").textContent = `Departure: ${departures[0]} (Tomorrow)`;
         document.getElementById("next-arrival").textContent = 
-            arrivals[0] ? `Arrival: ${arrivals[0]}` : "Arrival: N/A";
+            arrivals[0] ? `Arrival: ${arrivals[0]}` : "Next Arrival: N/A";
     }
 
-    getNextBus(); // Call on page load
+    // Load bus times every 10 minutes (600,000 milliseconds)
+    setInterval(getNextBus, 600000); // Adjust interval as needed
+    getNextBus(); // Initial load
+
+    function loadBBCNews() {
+        fetch('/news')
+            .then(response => response.json())
+            .then(data => {
+                const newsList = document.getElementById('bbcNewsList');
+                newsList.innerHTML = '';
+
+                if (data.error) {
+                    newsList.innerHTML = `<li>Error loading news: ${data.error}</li>`;
+                    return;
+                }
+
+                data.forEach(news => {
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `<a href="${news.link}" target="_blank">${news.title}</a>`;
+                    newsList.appendChild(listItem);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching news:', error);
+            });
+    }
+
+    // Load the BBC news on page load
+    setInterval(loadBBCNews, 60000);
+    loadBBCNews();
+
+    function loadWeather(cityId) {
+        fetch(`/weather/${cityId}`)
+            .then(response => response.json())
+            .then(data => {
+                const weatherInfo = document.getElementById('weatherInfo');
+
+                if (data.error) {
+                    weatherInfo.innerHTML = `<p>Error loading weather: ${data.error}</p>`;
+                    return;
+                }
+
+                weatherInfo.innerHTML = `
+                    <p>City: ${data.city}</p>
+                    <p>Temperature: ${data.temperature} °C</p>
+                    <p>Condition: ${data.description}</p>
+                    <img src="http://openweathermap.org/img/wn/${data.icon}.png" alt="${data.description}" />
+                `;
+            })
+            .catch(error => console.error('Error fetching weather:', error));
+    }
+
+    // Load weather every 10 minutes (600,000 milliseconds)
+    setInterval(() => loadWeather(2644487), 600000); // London city ID
+    loadWeather(2644487); // Initial load
+
+    function checkPubTime() {
+        const now = new Date();
+        const day = now.getDay(); // 5 is Friday (0 = Sunday, 6 = Saturday)
+        const hours = now.getHours();
+
+        const isFriday = day === 5;
+        const isPubTime = hours >= 17 && hours < 22; // Between 5:00 PM and 10:00 PM
+
+        const pubDiv = document.getElementById('gone-pub');
+        if (isFriday && isPubTime) {
+            pubDiv.style.display = 'block'; // Show the message
+        } else {
+            pubDiv.style.display = 'none'; // Hide the message
+        }
+    }
+
+    // Check every minute if it's pub time (60000 milliseconds)
+    setInterval(checkPubTime, 60000);
+    checkPubTime(); // Initial check when the page loads
+
+    // function loadDepartures() {
+    //     fetch('/departures')
+    //         .then(response => response.json())
+    //         .then(data => {
+    //             const departuresList = document.getElementById('departuresList');
+    //             departuresList.innerHTML = '';
+
+    //             if (data.error) {
+    //                 departuresList.innerHTML = `<li>Error loading departures: ${data.error}</li>`;
+    //                 return;
+    //             }
+
+    //             data.forEach(departure => {
+    //                 const listItem = document.createElement('li');
+    //                 listItem.innerHTML = `${departure.flight_number} to ${departure.destination} at ${new Date(departure.departure_time).toLocaleString()}`;
+    //                 departuresList.appendChild(listItem);
+    //             });
+    //         })
+    //         .catch(error => {
+    //             console.error('Error fetching departures:', error);
+    //         });
+    // }
+
+    // // Load the departures on page load
+    // setInterval(loadDepartures, 60000);
+    // loadDepartures();
+
 </script>
 
 </body>
