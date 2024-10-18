@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+import matplotlib
+
 import seaborn as sns
 import pandas as pd
 
@@ -15,10 +17,13 @@ sns.set_theme();
 
 plt.figure();
 ax = plt.subplot(2, 1, 1);
+plt.xticks(rotation=90);
 ax.set_title("Temprature");
+
 sns.lineplot(readings[["time", "temp"]], x="time", y="temp", ax=ax);
 
 ax = plt.subplot(2, 1, 2);
+plt.xticks(rotation=90);
 ax.set_title("Humidity");
 sns.lineplot(readings[["time", "humidity"]], x="time", y="humidity", ax=ax);
 
