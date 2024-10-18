@@ -15,7 +15,7 @@ readings.time = pd.to_datetime(readings.time, format="%Y-%m-%d %H:%M:%S", exact=
 readings = readings[readings.time > datetime.datetime.fromtimestamp(1729184400.0)];
 sns.set_theme();
 
-plt.figure();
+plt.figure(figsize=[10, 5.62]);
 ax = plt.subplot(2, 1, 1);
 plt.xticks(rotation=90);
 ax.set_title("Temprature");
