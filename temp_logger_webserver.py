@@ -22,7 +22,7 @@ CSV_FILE = 'sensor_data.csv'
 
 # Socket settings (to communicate with serial_reader.py)
 HOST = '127.0.0.1'
-PORT = 65432
+PORT = 5001
 
 # API endpoints and keys
 BBC_RSS_FEED = "http://feeds.bbci.co.uk/news/rss.xml"

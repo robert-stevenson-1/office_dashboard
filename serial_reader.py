@@ -8,7 +8,7 @@ BAUD_RATE = 115200
 
 # Socket settings
 HOST = '127.0.0.1'  # Localhost
-PORT = 65432  # Port to communicate with the Flask server
+PORT = 5001  # Port to communicate with the Flask server
 
 # Function to read serial data and send it to the server
 def send_serial_data():
