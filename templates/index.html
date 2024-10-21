@@ -33,7 +33,6 @@
         <div class="macice-status">
             <h2 style="margin-top: 0.25rem; margin-bottom: 0.25rem">mc-status</h2>
             <p>Ruston Road: <code id="macice-p-rust" class="mcice-unknown">unknown</code></p>
-            <p>13/14 Cornhill: <code id="macice-p-cor"  class="mcice-unknown">unknown</code></p>
             <p>323 High Street: <code id="macice-p-hs"   class="mcice-unknown">unknown</code></p>
             <p>The Carlton Centre: <code id="macice-p-carl" class="mcice-unknown">unknown</code></p>
             <p>Moorland Close: <code id="macice-p-moor" class="mcice-unknown">unknown</code></p>
@@ -206,13 +205,10 @@
 
 
     async function checkMICE() {
-        
-        
         markers = await (await fetch("https://mcbroken.com/markers.json", {"method": "GET"})).json();
         
         id_map = {
             "macice-p-rust" : {"street": "Ruston Road", "city": "Lincoln"},
-            "macice-p-cor"  : {"street": "13/14 Cornhill", "city": "Lincoln"},
             "macice-p-hs"   : {"street": "323 High Street", "city": "Lincoln"},
             "macice-p-carl" : {"street": "The Carlton Centre", "city": "Lincoln"},
             "macice-p-moor" : {"street": "Moorland Close", "city": "Lincoln"}
