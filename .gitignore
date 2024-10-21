@@ -4,3 +4,10 @@
 plot.png
 static/rain.jpg
 static/sun.jpg
+
+# API Keys
+api_keys.py
+
+
+# Python stuff
+**/*.pyc

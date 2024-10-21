@@ -25,12 +25,15 @@ HOST = '127.0.0.1'
 PORT = 5001
 
 # API endpoints and keys
+# API Keys moved to api-keys.py
+from api_keys import *
+
 BBC_RSS_FEED = "http://feeds.bbci.co.uk/news/rss.xml"
-OPENWEATHER_API_KEY = "your_openweather_api_key"
+# OPENWEATHER_API_KEY = "your_openweather_api_key"
 WEATHER_URL = "http://api.openweathermap.org/data/2.5/weather"
 HUMBERSIDE_AIRPORT_CODE = "HUY"
 FLIGHT_API_URL = "http://api.aviationstack.com/v1/flights"
-FLIGHT_API_KEY = "your_flightstack_api_key"  # Replace with your AviationStack API key
+# FLIGHT_API_KEY = "your_flightstack_api_key"  # Replace with your AviationStack API key
 
 # Function to load historical data from the CSV file when the server starts
 def load_data_from_csv():
@@ -146,7 +149,7 @@ def news():
         news = []
 
         for item in bbc_items:
-            title = item.find("title").text 
+            title = item.find("title").text
             link = item.find("link").text
             news.append({"title": title, "link": link})
 
@@ -185,7 +188,7 @@ def departures():
         # Fetch flight data
         response = requests.get(FLIGHT_API_URL, params={"access_key": FLIGHT_API_KEY, "dep_iata": HUMBERSIDE_AIRPORT_CODE})
         response.raise_for_status()
-        
+
         data = response.json()
         departures = []
 
