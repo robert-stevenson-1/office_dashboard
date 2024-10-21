@@ -30,6 +30,14 @@
         <h2>Next Campus Linc Bus at LAC</h2>
         <p id="next-departure">Loading next departure...</p>
         <p id="next-arrival">Loading next arrival...</p>
+        <div class="macice-status">
+            <h2 style="margin-top: 0.25rem; margin-bottom: 0.25rem">mc-status</h2>
+            <p>Ruston Road: <code id="macice-p-rust" class="mcice-unknown">unknown</code></p>
+            <p>13/14 Cornhill: <code id="macice-p-cor"  class="mcice-unknown">unknown</code></p>
+            <p>323 High Street: <code id="macice-p-hs"   class="mcice-unknown">unknown</code></p>
+            <p>The Carlton Centre: <code id="macice-p-carl" class="mcice-unknown">unknown</code></p>
+            <p>Moorland Close: <code id="macice-p-moor" class="mcice-unknown">unknown</code></p>
+        </div>
     </div>
 
     <div class="info">
@@ -195,6 +203,55 @@
     // Check every minute if it's pub time (60000 milliseconds)
     setInterval(checkPubTime, 60000);
     checkPubTime(); // Initial check when the page loads
+
+
+    async function checkMICE() {
+        
+        
+        markers = await (await fetch("https://mcbroken.com/markers.json", {"method": "GET"})).json();
+        
+        id_map = {
+            "macice-p-rust" : {"street": "Ruston Road", "city": "Lincoln"},
+            "macice-p-cor"  : {"street": "13/14 Cornhill", "city": "Lincoln"},
+            "macice-p-hs"   : {"street": "323 High Street", "city": "Lincoln"},
+            "macice-p-carl" : {"street": "The Carlton Centre", "city": "Lincoln"},
+            "macice-p-moor" : {"street": "Moorland Close", "city": "Lincoln"}
+        }
+        
+        Object.keys(id_map).forEach(key => {
+            vals = id_map[key];
+
+            shop = markers.features.filter(obj => { return (obj.properties.city === vals.city && obj.properties.street === vals.street && obj.properties.country == "UK"); } )[0];
+            
+            // console.log(`${key} ${JSON.stringify( shop)}`);
+            indicator = document.getElementById(key);
+
+            console.log(shop)
+            
+            switch (shop.properties.dot) {
+                case "working":
+                    indicator.innerText = "Working";
+                    indicator.classList = ["mcice-good"];
+                    break;
+
+                case "broken":
+                    indicator.innerText = "Broken";
+                    indicator.classList = ["mcice-bad"];
+                    break;
+
+                case "inactive":
+                default:
+                    indicator.innerText = "Unknown";
+                    indicator.classList = ["mcice-unknown"];
+                    break;
+            }
+            
+        });
+    }
+
+    // Check every minute the mc status (60000 milliseconds)
+    setInterval(checkMICE, 60000);
+    checkMICE(); // Initial check when the page loads
 
     // function loadDepartures() {
     //     fetch('/departures')
