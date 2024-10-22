@@ -11,3 +11,7 @@ api_keys.py
 
 # Python stuff
 **/*.pyc
+static/rob_weather
+nohup.out
+sensor_data.csv
+config
