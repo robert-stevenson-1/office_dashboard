@@ -723,6 +723,8 @@ def get_humberside_flight_data():
         # Manually add the custom flight between the 3rd and 4th flights in the list
         if len(departures_today) >= 3:
             departures_today.insert(3, custom_flight)  # Insert after the 3rd flight
+        else:
+            departures_today.append(custom_flight)  # Add to the end if fewer than 3 flights
 
         # Capitalize the location names
         for flight in departures_today:
