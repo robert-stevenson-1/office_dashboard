@@ -19,7 +19,9 @@
 <header style="display: flex; align-items: center; justify-content: space-between; padding: 10px;">
     <div style="display: flex; align-items: center; gap: 10px;">
         <div>Office Dashboard</div>
-        <img src="{{ url_for('static', filename='duck.png') }}" height="30px">
+        <img src="{{ url_for('static', filename='duck.png') }}" height="30px" />
+
+        <img src="{{ url_for('static', filename='racoon.gif') }}" class="racoon" />
     </div>
 
     <div id="clock" style="font-weight: bold;"></div>
@@ -49,6 +51,13 @@
         <p>323 High Street: <code id="macice-p-hs"   class="mcice-unknown">unknown</code></p>
         <p>The Carlton Centre: <code id="macice-p-carl" class="mcice-unknown">unknown</code></p>
         <p>Moorland Close: <code id="macice-p-moor" class="mcice-unknown">unknown</code></p>
+        <p id="all-broken-message" style="color: red;"></p> <!-- New element for the message -->
+    </div>
+
+    <div class="info" style="font-size: 1.5em">
+        <h2>Comment of the Moment</h2>
+        <blockquote id="quoteText">Loading...</blockquote>
+        <!-- <footer id="quoteAuthor"></footer> -->
     </div>
     
     <div class="info" id="weatherInfo">
@@ -66,7 +75,7 @@
     <div class="info" id="gone-lunch" style="display: none; text-align: center; font-size: 2em; padding: 20px;">
         <img src="{{ url_for('static', filename='rob_weather/lunch.jpg') }}" alt="${data.description}" class="rob_forecast_image" />
         <br />
-        Lunch Time!
+        Gone Lunch!
     </div>
 
     <div class="info" id="gone-home" style="display: none; text-align: center; font-size: 2em; padding: 20px;">
@@ -86,8 +95,14 @@
 </div>
 
 <div class="container">
-    <div class="chart-container" id="temperatureChart"></div>
-    <div class="chart-container" id="humidityChart"></div>
+    <div id="chartContainer" class="chart-container info">
+        <div id="combinedChart"></div>
+    </div>
+    
+    <div class="info bus_map_container">
+        <h2>Live Busses <img src="{{ url_for('static', filename='bus_icon_white.svg') }}"/></h2>
+        <div id="map_bus"></div>
+    </div>
 </div>
 
 <div class="info-container">
@@ -96,10 +111,9 @@
         <p>Loading departures...</p>
     </div>
 
-    
-    <div class="info bus_map_container">
-        <h2>Live Busses <img src="{{ url_for('static', filename='bus_icon_white.svg') }}"/></h2>
-        <div id="map_bus"></div>
+    <div class="info" id="flightDepartures">
+        <h2>Humberside Airport Departures <img src="{{ url_for('static', filename='plane_icon_white.svg') }}" /></h2>
+        <p>Loading departures...</p>
     </div>
 </div>
 
@@ -119,31 +133,79 @@
 <script>
     const socket = io();
 
-    // Initialize Plotly charts
-    const temperatureLayout = {
-        title: 'Temperature (°C)',
+    // Initialize Plotly chart for temperature and humidity on the same graph
+    const layout = {
+        title: 'Temperature and Humidity',
         xaxis: { title: 'Time' },
-        yaxis: { title: 'Temperature (°C)' },
-        margin: { t: 50, r: 30, l: 50, b: 50 }
-    };
-    const humidityLayout = {
-        title: 'Humidity (%)',
-        xaxis: { title: 'Time' },
-        yaxis: { title: 'Humidity (%)' },
+        yaxis: { title: 'Temperature (°C)', side: 'left' },
+        yaxis2: { title: 'Humidity (%)', side: 'right', overlaying: 'y', showgrid: false },
         margin: { t: 50, r: 30, l: 50, b: 50 }
     };
 
-    Plotly.newPlot('temperatureChart', [{ x: [], y: [], mode: 'lines', line: { color: 'red' } }], temperatureLayout);
-    Plotly.newPlot('humidityChart', [{ x: [], y: [], mode: 'lines', line: { color: 'blue' } }], humidityLayout);
+    // Initial Plot for temperature and humidity
+    Plotly.newPlot('combinedChart', [
+        { x: [], y: [], mode: 'lines', name: 'Temperature', line: { color: 'red' }, yaxis: 'y' },
+        { x: [], y: [], mode: 'lines', name: 'Humidity', line: { color: 'blue' }, yaxis: 'y2' }
+    ], layout);
 
+    // Fetch initial historical data for the last 'n' hours
+    const hours = 6;  // You can make this dynamic based on user input
+
+    fetch(`/get_last_hours/${hours}`)
+        .then(response => response.json())
+        .then(data => {
+            const tempX = data.timestamps;
+            const tempY = data.temperature_data;
+            const humY = data.humidity_data;
+
+            // Populate the chart with historical data
+            Plotly.restyle('combinedChart', 'x', [tempX]);
+            Plotly.restyle('combinedChart', 'y', [tempY], 0);  // Update first y-axis for temperature
+            Plotly.restyle('combinedChart', 'y', [humY], 1);   // Update second y-axis for humidity
+        });
+
+    // Listen for new data in real time and update the chart
     socket.on('new_data', function (data) {
-        Plotly.extendTraces('temperatureChart', { x: [[data.time]], y: [[data.temperature]] }, [0]);
-        Plotly.extendTraces('humidityChart', { x: [[data.time]], y: [[data.humidity]] }, [0]);
+        // Extend traces with new temperature and humidity data
+        Plotly.extendTraces('combinedChart', { x: [[data.time]], y: [[data.temperature]] }, [0]);
+        Plotly.extendTraces('combinedChart', { x: [[data.time]], y: [[data.humidity]] }, [1]);
 
+        // Update the current temperature and averages displayed
         document.getElementById('currentTemperature').innerText = data.current_temperature.toFixed(2);
         document.getElementById('averageTemperature5Min').innerText = data.average_temperature_5min.toFixed(2);
         document.getElementById('averageTemperature5Days').innerText = data.average_temperature_5days.toFixed(2);
     });
+
+    const maxPoints = 60; // Adjust this based on your requirement
+
+    function manageData() {
+        // Fetch the current x data and limit it to the maxPoints
+        const currentX = Plotly.d3.select('#combinedChart').data()[0].x;
+        const currentYTemp = Plotly.d3.select('#combinedChart').data()[0].y[0];
+        const currentYHum = Plotly.d3.select('#combinedChart').data()[1].y[0];
+
+        if (currentX.length > maxPoints) {
+            Plotly.restyle('combinedChart', {
+                x: [currentX.slice(currentX.length - maxPoints)],
+                y: [currentYTemp.slice(currentYTemp.length - maxPoints)],
+            }, [0]);
+            Plotly.restyle('combinedChart', {
+                y: [currentYHum.slice(currentYHum.length - maxPoints)],
+            }, [1]);
+        }
+    }
+
+    // Call manageData after extending traces
+    setInterval(() => {
+        fetch(`/get_last_hours/${hours}`)
+            .then(response => response.json())
+            .then(data => {
+                // Existing code for extending traces...
+                manageData(); // Manage data after fetching new data
+            });
+    }, 60000); 
+
+
 
     // Bus schedule logic
     const departures = ["07:30", "08:30", "13:00", "16:40", "17:40"];
@@ -292,7 +354,7 @@
         const hours = now.getHours();
 
         const isFriday = day === 5;
-        const isPubTime = hours >= 14 && hours < 22; // Between 5:00 PM and 10:00 PM
+        const isPubTime = hours >= 17 && hours < 22; // Between 5:00 PM and 10:00 PM
 
         const pubDiv = document.getElementById('gone-pub');
         if (isFriday && isPubTime) {
@@ -495,29 +557,32 @@
     setInterval(updateMap, 30000);
 
     async function checkMICE() {
-        markers = await (await fetch("https://mcbroken.com/markers.json", {"method": "GET"})).json();
-        
-        id_map = {
-            "macice-p-rust" : {"street": "Ruston Road", "city": "Lincoln"},
-            "macice-p-hs"   : {"street": "323 High Street", "city": "Lincoln"},
-            "macice-p-carl" : {"street": "The Carlton Centre", "city": "Lincoln"},
-            "macice-p-moor" : {"street": "Moorland Close", "city": "Lincoln"}
+        const markers = await (await fetch("https://mcbroken.com/markers.json", { "method": "GET" })).json();
+
+        const id_map = {
+            "macice-p-rust": { "street": "Ruston Road", "city": "Lincoln" },
+            "macice-p-hs": { "street": "323 High Street", "city": "Lincoln" },
+            "macice-p-carl": { "street": "The Carlton Centre", "city": "Lincoln" },
+            "macice-p-moor": { "street": "Moorland Close", "city": "Lincoln" }
         }
-        
+
+        let allBroken = true; // Flag to check if all are broken
+
         Object.keys(id_map).forEach(key => {
-            vals = id_map[key];
+            const vals = id_map[key];
+            const shop = markers.features.filter(obj => {
+                return (obj.properties.city === vals.city && obj.properties.street === vals.street && obj.properties.country === "UK");
+            })[0];
 
-            shop = markers.features.filter(obj => { return (obj.properties.city === vals.city && obj.properties.street === vals.street && obj.properties.country == "UK"); } )[0];
+            const indicator = document.getElementById(key);
             
-            // console.log(`${key} ${JSON.stringify( shop)}`);
-            indicator = document.getElementById(key);
-
-            console.log(shop)
+            console.log(shop);
             
             switch (shop.properties.dot) {
                 case "working":
                     indicator.innerText = "Working";
                     indicator.classList = ["mcice-good"];
+                    allBroken = false; // Set flag to false if any machine is working
                     break;
 
                 case "broken":
@@ -529,15 +594,24 @@
                 default:
                     indicator.innerText = "Unknown";
                     indicator.classList = ["mcice-unknown"];
+                    allBroken = false; // Set flag to false if any machine is inactive or unknown
                     break;
             }
-            
         });
+
+        // Show "All Broken" if all machines are broken
+        const allBrokenMessage = document.getElementById("all-broken-message");
+        if (allBroken) {
+            allBrokenMessage.innerText = "All Broken nearest Wendys: 195 High Street";
+        } else {
+            allBrokenMessage.innerText = ""; // Clear the message if not all are broken
+        }
     }
 
-    // Check every minute the mc status (60000 milliseconds)
-    setInterval(checkMICE, 60000);
+    // Check every 10 minutes the mc status (600000 milliseconds)
+    setInterval(checkMICE, 600000);
     checkMICE(); // Initial check when the page loads
+
 
     function updateClock() {
         const now = new Date();
@@ -550,6 +624,142 @@
 
     setInterval(updateClock, 1000);  // Update every second
     updateClock();  // Initial call to display the clock immediately
+
+    function loadQuoteOfTheDay() {
+    fetch('/random_quote')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('quoteText').textContent = `"${data.quote}"`;
+            // document.getElementById('quoteAuthor').textContent = `- ${data.author}`;
+        })
+        .catch(error => {
+            console.error('Error fetching quote of the day:', error);
+            document.getElementById('quoteText').textContent = "Error loading quote.";
+            // document.getElementById('quoteAuthor').textContent = "";
+        });
+    }
+
+    // Update every 10 minutes (600000 milliseconds)
+    setInterval(loadQuoteOfTheDay, 600000);
+    loadQuoteOfTheDay(); // Initial run when the page loads
+
+
+
+    function loadFlightDepartures() {
+    fetch('/flight_departures')  // This URL should point to your Flask route for fetching flight departures
+        .then(response => response.json())
+        .then(data => {
+            const flightDepartures = document.getElementById('flightDepartures');
+
+            if (data.error) {
+                flightDepartures.innerHTML = `<p class="no-data">Error loading departures: ${data.error}</p>`;
+                return;
+            }
+
+            let departuresHtml = `
+                <h2>Humberside Airport Departures <img src="{{ url_for('static', filename='plane_icon_white.svg') }}" /></h2>
+                <table id="flightSchedule">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Destination</th>
+                            <th>Flight</th>
+                            <th colspan="2">Airline</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                <tbody>
+            `;
+            
+            // Limit the number of departures to a maximum of 8
+            const limitedDepartures = data.departures.slice(0, 8);
+
+            // Function to determine the airline based on the flight number
+            const getAirline = (flightNumber) => {
+                if (flightNumber.startsWith('T')) {
+                    return 'Eastern Airways';
+                } else if (flightNumber.startsWith('KL')) {
+                    return 'KLM';
+                } else if (flightNumber.startsWith('CHC')) {
+                    return 'CHC Helicopter';
+                } else if (flightNumber.startsWith('UNC')) {
+                    return 'Uni-Fly';
+                } else if (flightNumber.startsWith('BHL')) {
+                    return 'Bristow Helicopters';
+                } else if (flightNumber.startsWith('C-123')) {
+                    return 'Con Air';
+                } else if (flightNumber.startsWith('NWA')) {
+                    return 'Northwest Airlines';
+                } else if (flightNumber.startsWith('OA')) {
+                    return 'Oceanic Airlines';
+                } else {
+                    return 'Unknown Airline';  // Default if no match
+                }
+            };
+
+            // Function to determine the airline logo based on the flight number
+            const getAirlineLogo = (flightNumber) => {
+                if (flightNumber.startsWith('T')) {
+                    return `<img src="{{ url_for('static', filename='/airlines/Eastern_airways_logo.png') }}" alt="Eastern Airways" class="airline-logo">`;
+                } else if (flightNumber.startsWith('KL')) {
+                    return `<img src="{{ url_for('static', filename='/airlines/KLM_logo.png') }}" alt="KLM" class="airline-logo">`;
+                } else if (flightNumber.startsWith('CHC')) {
+                    return `<img src="{{ url_for('static', filename='/airlines/CHC_Helicopter_logo.png') }}" alt="CHC Helicopter" class="airline-logo">`;
+                } else if (flightNumber.startsWith('UNC')) {
+                    return `<img src="{{ url_for('static', filename='/airlines/UNI_FLY_logo.svg') }}" alt="Uni-Fly" class="airline-logo">`;
+                } else if (flightNumber.startsWith('BHL')) {
+                    return `<img src="{{ url_for('static', filename='/airlines/Bristow_helicopters_logo.png') }}" alt="Bristow Helicopters" class="airline-logo">`;
+                } else if (flightNumber.startsWith('C-123')) {
+                    return `<img src="{{ url_for('static', filename='/airlines/Con_air_logo.png') }}" alt="Con Air" class="airline-logo">`;
+                } else if (flightNumber.startsWith('NWA')) {
+                    return `<img src="{{ url_for('static', filename='/airlines/Snakes_on_a_plane_logo.png') }}" alt="Northwest Airlines" class="airline-logo">`;
+                } else if (flightNumber.startsWith('OA')) {
+                    return `<img src="{{ url_for('static', filename='/airlines/Oceanic_airlines_logo.png') }}" alt="Oceanic Airlines" class="airline-logo">`;
+                } else {
+                    return ``;  // Default logo
+                }
+            };
+
+
+            // Function to determine the status class
+            const getStatusClass = (status) => {
+                if (status === 'Delayed') {
+                    return 'highlight-yellow';
+                } else if (status === 'Cancelled' || status === 'Not Operating') {
+                    return 'highlight-red';
+                } else {
+                    return '';  // Default if no special status
+                }
+            };
+
+            // Loop through departures and generate the table rows
+            limitedDepartures.forEach(departure => {
+                const airline = getAirline(departure.FlightNumber);  // Get the airline based on the flight number
+                const airlineLogo = getAirlineLogo(departure.FlightNumber);
+                const statusClass = getStatusClass(departure.Status);  // Get the status class based on the status
+                departuresHtml += `
+                    <tr>
+                        <td>${departure.ArrivalTime}</td>
+                        <td>${departure.Location}</td>
+                        <td>${departure.FlightNumber}</td>
+                        <td><span class="highlight">${airline}</span></td>
+                        <td>${airlineLogo}</td>
+                        <td><span class="${statusClass}">${departure.Status}</span></td>
+                    </tr>
+                `;
+            });
+
+            departuresHtml += '</tbody></table>';
+
+            flightDepartures.innerHTML = departuresHtml;
+        })
+        .catch(error => console.error('Error fetching departures:', error));
+    }
+
+    // Load flight departures every 100 minutes (6,000,000 milliseconds)
+    setInterval(loadFlightDepartures, 6000000);
+    loadFlightDepartures();  // Initial load
+
 
 
 

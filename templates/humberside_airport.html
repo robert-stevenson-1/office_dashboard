@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Humberside Airport Departures</title>
+    <style>
+        body {
+            font-family: 'Arial', monospace;
+            background-color: #333;
+            margin: 0;
+            padding: 0;
+            color: #fff;
+            display: block;  /* Use block-level layout instead of flexbox */
+            min-height: 100vh;  /* Ensure the body stretches to full height */
+            overflow: hidden;
+        }
+        h1 {
+            text-align: center;
+            color: #fff;
+            font-size: 5em;
+            margin-top: 20px; /* Space from the top */
+            margin-bottom: 40px; /* Space between title and table */
+        }
+        .flight-board {
+            border-collapse: collapse;
+            width: 100%;
+            height: auto;  /* Let the table size dynamically based on content */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            background-color: #222;
+            overflow: auto;
+            display: block;
+        }
+        .flight-board th,
+        .flight-board td {
+            text-align: center;
+            padding: 20px;
+            font-size: 3em; /* Larger font size */
+        }
+        .flight-board th {
+            background-color: #ffcc00; /* Yellow background */
+            color: #000;
+            letter-spacing: 2px;
+        }
+        .flight-board tr:nth-child(even) {
+            background-color: #333; /* Dark grey rows */
+        }
+        .flight-board tr:hover {
+            background-color: #444; /* Slightly lighter grey on hover */
+        }
+        .flight-board td {
+            font-size: 3.5em; /* Larger text for table data */
+            color: #f0f0f0;
+        }
+        .airline-logo {
+            height: 70px; /* Increase logo size */
+            width: auto;
+            display: block; /* Makes the image a block-level element */
+            margin: 0 auto; /* Centers the image horizontally */
+        }
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            font-size: 3em; /* Larger font size for no data message */
+            color: #bbb; /* Light grey text */
+        }
+        .highlight {
+            color: #ffcc00; /* Neon yellow for highlight */
+        }
+        .flight-board td, .flight-board th {
+            transition: all 0.3s ease; /* Smooth transition for hover effects */
+        }
+        .flight-board tr:hover td {
+            color: #fff; /* White text on hover */
+        }
+        /* Custom styles for delayed and cancelled statuses */
+        .highlight-yellow {
+            color: #ffcc00; /* Yellow for Delayed */
+            font-weight: bold; /* Optional: make the text bold */
+        }
+        .highlight-red {
+            color: #ff0000; /* Red for Cancelled */
+            font-weight: bold; /* Optional: make the text bold */
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h1>Humberside Airport Departures</h1>
+
+        {% if departures %}
+        <table class="flight-board">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Destination</th>
+                    <th>Flight</th>
+                    <th colspan="2">Airline</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for flight in departures %}
+                <tr>
+                    <td><span class="highlight">{{ flight.ArrivalTime }}</span></td>
+                    <td>{{ flight.Location }}</td>
+                    <td>{{ flight.FlightNumber }}</td>
+                    <td>
+                        {% if flight.FlightNumber.startswith('T') %}
+                            <span class="highlight">Eastern Airways</span>
+                        {% elif flight.FlightNumber.startswith('KL') %}
+                            <span class="highlight">KLM</span>
+                        {% elif flight.FlightNumber.startswith('CHC') %}
+                            <span class="highlight">CHC Helicopter</span>
+                        {% elif flight.FlightNumber.startswith('UNC') %}
+                            <span class="highlight">Uni-Fly</span>
+                        {% elif flight.FlightNumber.startswith('BHL') %}
+                            <span class="highlight">Bristow Helicopters</span>
+                        {% elif flight.FlightNumber.startswith('C-123') %}
+                            <span class="highlight">Con Air</span>
+                        {% elif flight.FlightNumber.startswith('NWA') %}
+                            <span class="highlight">Northwest Airlines</span>
+                        {% elif flight.FlightNumber.startswith('OA') %}
+                            <span class="highlight">Oceanic Airlines</span>
+                        {% else %}
+                            <!-- Unknown Airline -->
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if flight.FlightNumber.startswith('T') %}
+                            <img src="{{ url_for('static', filename='/airlines/Eastern_airways_logo.png') }}" alt="Eastern Airways" class="airline-logo">
+                        {% elif flight.FlightNumber.startswith('KL') %}
+                            <img src="{{ url_for('static', filename='/airlines/KLM_logo.png') }}" alt="KLM" class="airline-logo">
+                        {% elif flight.FlightNumber.startswith('CHC') %}
+                            <img src="{{ url_for('static', filename='/airlines/CHC_Helicopter_logo.png') }}" alt="CHC Helicopter" class="airline-logo">
+                        {% elif flight.FlightNumber.startswith('UNC') %}
+                            <img src="{{ url_for('static', filename='/airlines/UNI_FLY_logo.svg') }}" alt="Uni-Fly" class="airline-logo">
+                        {% elif flight.FlightNumber.startswith('BHL') %}
+                            <img src="{{ url_for('static', filename='/airlines/Bristow_helicopters_logo.png') }}" alt="Bristow Helicopters" class="airline-logo">
+                        {% elif flight.FlightNumber.startswith('C-123') %}
+                            <img src="{{ url_for('static', filename='/airlines/Con_air_logo.png') }}" alt="Con Air" class="airline-logo">
+                        {% elif flight.FlightNumber.startswith('NWA') %}
+                            <img src="{{ url_for('static', filename='/airlines/Snakes_on_a_plane_logo.png') }}" alt="Northwest Airlines" class="airline-logo">                            
+                        {% elif flight.FlightNumber.startswith('OA') %}
+                            <img src="{{ url_for('static', filename='/airlines/Oceanic_airlines_logo.png') }}" alt="Oceanic Airlines" class="airline-logo">
+                        {% else %}
+                            <!-- <img src="https://example.com/default_logo.png" alt="Unknown Airline" class="airline-logo"> -->
+                        {% endif %}
+                    </td>
+                    <td>
+                      <span class="{{ 'highlight-yellow' if flight.Status == 'Delayed' else 'highlight-red' if flight.Status == 'Cancelled' or flight.Status == 'Not Operating' else '' }}">
+                        {{ flight.Status }}
+                      </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">No departures today.</div>
+        {% endif %}
+    </div>
+</body>
+</html>

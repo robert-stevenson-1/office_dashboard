@@ -35,6 +35,7 @@ CSV_FILE = 'sensor_data.csv'
 # Socket settings (to communicate with serial_reader.py)
 HOST = '127.0.0.1'
 PORT = 5001
+# PORT = 5002
 # PORT = 65432
 
 # API endpoints and keys
@@ -114,6 +115,182 @@ def filter_old_data():
         timestamps.pop(0)
         temperature_data.pop(0)
         humidity_data.pop(0)
+
+# Function to filter data from the last 'n' hours
+def filter_last_n_hours(n_hours):
+    now = datetime.datetime.now()
+    time_ago = now - datetime.timedelta(hours=n_hours)
+
+    filtered_timestamps = []
+    filtered_temperature_data = []
+    filtered_humidity_data = []
+
+    # Load data from the CSV file and filter out entries older than 'n' hours
+    if os.path.exists(CSV_FILE):
+        with open(CSV_FILE, 'r') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                timestamp_str, temperature, humidity = row
+                timestamp = datetime.datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                
+                if timestamp >= time_ago:
+                    filtered_timestamps.append(timestamp.strftime("%Y-%m-%d %H:%M:%S"))
+                    filtered_temperature_data.append(float(temperature))
+                    filtered_humidity_data.append(float(humidity))
+
+    return filtered_timestamps, filtered_temperature_data, filtered_humidity_data
+
+# Quote of the Day - updated with the new list
+quotes = [
+    {"quote": "I’d explain it to you, but I left my English-to-Dingbat dictionary at home."},
+    {"quote": "You bring everyone so much joy... when you leave the room."},
+    {"quote": "I’d agree with you, but then we’d both be wrong."},
+    {"quote": "You’re proof that even evolution makes mistakes."},
+    {"quote": "Your secrets are always safe with me. I never even listen when you tell me them."},
+    {"quote": "I’m not saying you’re stupid; I’m just saying you have bad luck when it comes to thinking."},
+    {"quote": "You have the perfect face for radio."},
+    {"quote": "I don’t know what makes you so dumb, but it really works."},
+    {"quote": "I’m not insulting you; I’m describing you."},
+    {"quote": "You’re like a software update. Whenever I see you, I think, 'Not now.'"},
+    {"quote": "I thought of you today. It reminded me to take out the trash."},
+    {"quote": "You’re like a cloud. When you disappear, it’s a beautiful day."},
+    {"quote": "I don’t have the energy to pretend to like you today."},
+    {"quote": "You’re the reason God created the middle finger."},
+    {"quote": "If I had a dollar for every time I saw you, I’d be broke."},
+    {"quote": "You’re as useless as the 'ueue' in 'queue.'"},
+    {"quote": "I’m jealous of people who don’t know you."},
+    {"quote": "You’re like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
+    {"quote": "You have a nice face. I’d like to keep it in a jar."},
+    {"quote": "Some day you’ll go far... and I hope you stay there."},
+    {"quote": "I’d call you a tool, but that implies you’re useful."},
+    {"quote": "If laughter is the best medicine, your face must be curing the world."},
+    {"quote": "A clear conscience is usually the sign of a bad memory."},
+    {"quote": "I used to think I was indecisive, but now I’m not too sure."},
+    {"quote": "You’re as welcome as a skunk at a garden party."},
+    {"quote": "If you were any more inbred, you’d be a sandwich."},
+    {"quote": "You’re as useful as a screen door on a submarine."},
+    {"quote": "You’re not stupid; you just have bad luck when it comes to thinking."},
+    {"quote": "You bring so much joy... when you leave the room."},
+    {"quote": "I can see why people hate you."},
+    {"quote": "If I wanted to hear from an asshole, I’d fart."},
+    {"quote": "You’re the reason God created the middle finger."},
+    {"quote": "I’d agree with you, but then we’d both be wrong."},
+    {"quote": "You’re like a broken pencil: pointless."},
+    {"quote": "I’d explain it to you, but I don’t have any crayons."},
+    {"quote": "You’re the human version of a participation trophy."},
+    {"quote": "You’re like a cloud; when you disappear, it’s a beautiful day."},
+    {"quote": "Your face makes onions cry."},
+    {"quote": "I’m not lazy; I’m on energy-saving mode."},
+    {"quote": "If at first you don’t succeed, then skydiving definitely isn’t for you."},
+    {"quote": "You’re as pleasant as a root canal."},
+    {"quote": "I’d like to see things from your perspective, but I can’t get my head that far up my own ass."},
+    {"quote": "You’re like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
+    {"quote": "I hope your day is as pleasant as your personality."},
+    {"quote": "You have the perfect face for radio."},
+    {"quote": "You’re proof that even evolution makes mistakes."},
+    {"quote": "You bring everyone so much joy... when you leave the room."},
+    {"quote": "I’d call you a tool, but that implies you’re useful."},
+    {"quote": "If I wanted to hear from an asshole, I’d fart."},
+    {"quote": "You have a nice face. I’d like to keep it in a jar."},
+    {"quote": "If you were any more dense, we could put you in a black hole."},
+    {"quote": "You’re as useful as a chocolate teapot."},
+    {"quote": "You’re not even wrong."},
+    {"quote": "You’re the human version of a participation trophy."},
+    {"quote": "You’re like a cloud; when you disappear, it’s a beautiful day."},
+    {"quote": "I’d explain it to you, but I don’t have the crayons."},
+    {"quote": "You’re the reason they put instructions on shampoo."},
+    {"quote": "You’re as useless as a screen door on a submarine."},
+    {"quote": "I’d agree with you, but then we’d both be wrong."},
+    {"quote": "You’re like a software update; whenever I see you, I think, 'Not now.'"},
+    {"quote": "I can see why people hate you."},
+    {"quote": "If you were any more inbred, you’d be a sandwich."},
+    {"quote": "You’re the human version of a participation trophy."},
+    {"quote": "You’re like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
+    {"quote": "If I had a dollar for every time I saw you, I’d be broke."},
+    {"quote": "You’re as welcome as a skunk at a garden party."},
+    {"quote": "I’d like to see things from your perspective, but I can’t get my head that far up my own ass."},
+    {"quote": "I thought of you today. It reminded me to take out the trash."},
+    {"quote": "You’re like a cloud; when you disappear, it’s a beautiful day."},
+    {"quote": "I’d explain it to you, but I don’t have the crayons."},
+    {"quote": "You’re the reason they put instructions on shampoo."},
+    {"quote": "You’re the reason God created the middle finger."},
+    {"quote": "You bring everyone so much joy... when you leave the room."},
+    {"quote": "You’re not stupid; you just have bad luck when it comes to thinking."},
+    {"quote": "You’re proof that even evolution makes mistakes."},
+    {"quote": "If I wanted to hear from an asshole, I’d fart."},
+    {"quote": "You’re about as useful as a chocolate teapot."},
+    {"quote": "You have a nice face. I’d like to keep it in a jar."},
+    {"quote": "You’re like a software update; whenever I see you, I think, 'Not now.'"},
+    {"quote": "You’re like a broken pencil: pointless."},
+    {"quote": "You’re as useful as a screen door on a submarine."},
+    {"quote": "You bring everyone so much joy... when you leave the room."},
+    {"quote": "You’re the human version of a participation trophy."},
+    {"quote": "You’re as welcome as a skunk at a garden party."},
+    {"quote": "I hope your day is as pleasant as your personality."},
+    {"quote": "I’d like to see things from your perspective, but I can’t get my head that far up my own ass."},
+    {"quote": "If you were any more inbred, you’d be a sandwich."},
+    {"quote": "I’m not insulting you; I’m describing you."},
+    {"quote": "You have the perfect face for radio."},
+    {"quote": "I’d call you a tool, but that implies you’re useful."},
+    {"quote": "You’re like a software update. Whenever I see you, I think, 'Not now.'"},
+    {"quote": "You’re proof that even evolution makes mistakes."},
+    {"quote": "I’d agree with you, but then we’d both be wrong."},
+    {"quote": "You’re the reason they put instructions on shampoo."},
+    {"quote": "I’d explain it to you, but I don’t have the crayons."},
+    {"quote": "You’re like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
+    {"quote": "If laughter is the best medicine, your face must be curing the world."},
+    {"quote": "You bring so much joy... when you leave the room."},
+    {"quote": "You’re the reason God created the middle finger."},
+    {"quote": "If at first you don’t succeed, then skydiving definitely isn’t for you."},
+    {"quote": "You’re like a cloud; when you disappear, it’s a beautiful day."},
+    {"quote": "I thought of you today. It reminded me to take out the trash."},
+    {"quote": "I can see why people hate you."},
+    {"quote": "I’d like to see things from your perspective, but I can’t get my head that far up my own ass."},
+    {"quote": "You’re as useless as a chocolate teapot."},
+    {"quote": "I’d agree with you, but then we’d both be wrong."},
+    {"quote": "You’re proof that even evolution makes mistakes."},
+    {"quote": "You’re the reason they put instructions on shampoo."},
+    {"quote": "You’re like a software update; whenever I see you, I think, 'Not now.'"},
+    {"quote": "I hope your day is as pleasant as your personality."},
+    {"quote": "You’re about as useful as a screen door on a submarine."},
+    {"quote": "I’d explain it to you, but I don’t have the crayons."},
+    {"quote": "You have a nice face. I’d like to keep it in a jar."},
+    {"quote": "You’re the human version of a participation trophy."},
+    {"quote": "You’re not stupid; you just have bad luck when it comes to thinking."},
+    {"quote": "You bring so much joy... when you leave the room."},
+    {"quote": "You’re like a broken pencil: pointless."},
+    {"quote": "I’d call you a tool, but that implies you’re useful."},
+    {"quote": "I’m not saying you’re stupid; I’m just saying you have bad luck when it comes to thinking."},
+    {"quote": "You’re the reason God created the middle finger."},
+    {"quote": "You’re like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
+    {"quote": "You’re the human version of a participation trophy."},
+    {"quote": "I’d agree with you, but then we’d both be wrong."},
+    {"quote": "I’d explain it to you, but I don’t have any crayons."},
+    {"quote": "You’re like a cloud; when you disappear, it’s a beautiful day."},
+    {"quote": "I thought of you today. It reminded me to take out the trash."},
+    {"quote": "You bring everyone so much joy... when you leave the room."}
+]
+ 
+# Route to get a random quote
+@app.route('/random_quote')
+def random_quote():
+    # Seed random number generator with today's date
+    # today = datetime.date.today()
+    # seed_value = today.toordinal()  # Converts to an ordinal number
+    # random.seed(seed_value)
+    # Select a random quote
+    quote = random.choice(quotes)
+    return jsonify(quote)
+
+# Dynamic route to serve data from the last 'n' hours
+@app.route('/get_last_hours/<int:hours>')
+def get_last_hours(hours):
+    timestamps, temperature_data, humidity_data = filter_last_n_hours(hours)
+    return jsonify({
+        'timestamps': timestamps,
+        'temperature_data': temperature_data,
+        'humidity_data': humidity_data
+    })
 
 # Function to calculate the average temperature over the last 5 days
 def calculate_5_day_average():
@@ -268,16 +445,22 @@ def get_weather(city):
 #     except Exception as e:
 #         return jsonify({"error": str(e)}), 500
 
-@app.route('/departures/<departure_station>', methods=['GET'])
-def departures(departure_station):
+@app.route('/departures/', defaults={'departure_station': 'LCN', 'number_of_departures': 6}, methods=['GET'])
+@app.route('/departures/<departure_station>/', defaults={'number_of_departures': 6}, methods=['GET'])
+@app.route('/departures/<departure_station>/<number_of_departures>', methods=['GET'])
+def departures(departure_station, number_of_departures):
     # departure_station = "LCN"  # Set your departure station here
 
     # Ensure the departure_station is in uppercase
     departure_station = departure_station.upper()
 
+    # Ensure the number_of_departures is an int
+    number_of_departures = int(number_of_departures)
+
     if not departure_station:
         return "Please provide a departureStation parameter", 400
 
+    # Subtract 1 due to the random train added
     APIRequest = f"""
         <x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ldb="http://thalesgroup.com/RTTI/2017-10-01/ldb/" xmlns:typ4="http://thalesgroup.com/RTTI/2013-11-28/Token/types">
             <x:Header>
@@ -287,7 +470,7 @@ def departures(departure_station):
             </x:Header>
             <x:Body>
                 <ldb:GetDepBoardWithDetailsRequest>
-                    <ldb:numRows>10</ldb:numRows>
+                    <ldb:numRows>{number_of_departures - 1}</ldb:numRows>
                     <ldb:crs>{departure_station}</ldb:crs>
                     <ldb:filterCrs></ldb:filterCrs>
                     <ldb:filterType>to</ldb:filterType>
@@ -309,9 +492,9 @@ def departures(departure_station):
     if departure_data == None:
         raise Exception("parsing returned None. Rob's Fault")
     
-     # Render the departures template with the parsed data
+    # Render the departures template with the parsed data
     # threading.Thread(target=speak_first_train, args=(departure_data,), daemon=True).start()
-    speak_first_train(departure_data)
+    # speak_first_train(departure_data)
     
     # return response.text
     
@@ -416,19 +599,42 @@ def parse_departures(xml_data):
 
     # Check if there are at least 4 trains in the departure_data
     if len(departure_data) >= 4:
-        # Extract std times from the 2nd and 4th entries
-        std_time_2 = datetime.datetime.strptime(departure_data[1]['std'], '%H:%M')
-        std_time_4 = datetime.datetime.strptime(departure_data[3]['std'], '%H:%M')
+        # Extract std times from the 2nd and 3rd entries
+        std_time_1 = datetime.datetime.strptime(departure_data[2]['std'], '%H:%M')
+        std_time_2 = datetime.datetime.strptime(departure_data[3]['std'], '%H:%M')
         
-        # Generate a random std time between the 2nd and 4th trains' std times
-        random_std = random_time_between(std_time_2, std_time_4).strftime('%H:%M')
+        # Generate a random std time between the 2nd and 3rd trains' std times
+        random_std_time = random_time_between(std_time_1, std_time_2)
+        random_std = random_std_time.strftime('%H:%M')
     else:
-        # Handle cases with fewer than 4 trains, Get the current time and add one hour
+        # Handle cases with fewer than 4 trains
         current_time = datetime.datetime.now()
         one_hour_later = current_time + datetime.timedelta(hours=1)
-        random_std = one_hour_later.strftime('%H:%M')  # Format the time as HH:MMins
+        random_std = one_hour_later.strftime('%H:%M')  # Format the time as HH:MM
 
-    departure_data.insert(min(3, len(departure_data)), {'std': random_std, 'etd': 'On time', 'platform': '9¾', 'operator': 'Hogwarts Express', 'destination_name': 'Hogsmeade'})
+    # Randomly choose between trains to add
+    train_options = [
+        {'platform': '9¾', 'operator': 'Hogwarts Express', 'destination_name': 'Hogsmeade'},
+        {'platform': '6', 'operator': 'Polar Express', 'destination_name': 'North Pole'},
+        {'platform': '6', 'operator': 'Thomas The Tank Engine', 'destination_name': 'Vicarstown'},
+        {'platform': '6', 'operator': 'Snowpiercer', 'destination_name': 'New Eden'},
+        {'platform': '6', 'operator': 'Orient Express', 'destination_name': 'Istanbul'},
+        {'platform': '6', 'operator': 'Amtrak California Zephyr', 'destination_name': 'Chicago Union Station'},
+        {'platform': '6', 'operator': 'VIA Rail The Canadian', 'destination_name': 'Vancouver Pacific Central Station'},
+        {'platform': '6', 'operator': 'Metro-North Railroad', 'destination_name': 'Grand Central'},
+        {'platform': '6', 'operator': 'NSW TrainLink', 'destination_name': 'Melbourne Southern Cross'},
+        {'platform': '6', 'operator': 'The Ghan', 'destination_name': 'Darwin'},
+        {'platform': '6', 'operator': 'Kiwi Rail', 'destination_name': 'Auckland Strand'},
+        {'platform': '6', 'operator': 'Deutsche Bahn', 'destination_name': 'Bielefeld Hbf'},
+        {'platform': '6', 'operator': 'ОАО Trans-Siberian', 'destination_name': 'Vladivostok'},
+        {'platform': '6', 'operator': 'Trenes Argentinos', 'destination_name': 'Buenos Aires Retiro'}
+    ]
+
+    random_train = random.choice(train_options)
+
+    # Insert the randomly chosen train into the departure_data
+    departure_data.insert(min(3, len(departure_data)), 
+                        {'std': random_std, 'etd': 'On time', **random_train})
 
     return departure_station_name, departure_station_code, departure_data
 
@@ -453,6 +659,119 @@ def speak_first_train(departure_data):
         # Speak the text
         engine.say(speech_text)
         engine.runAndWait()
+
+@app.route('/flights')
+def flights():
+    return render_template('flights.html')
+
+def get_humberside_flight_data():
+    # Fetch data from the Humberside Airport flight data URL
+    url = "https://www.humbersideairport.com/flightdata/flightsjson.txt"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        # Parse JSON data
+        flight_data = response.json()
+
+        # Filter departures for today
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        departures_today = [
+            flight for flight in flight_data["Departures"] if flight["Date"].startswith(today)
+        ]
+
+        # List of custom flights
+        custom_flights = [
+            {
+                "Location": "Lompoc Penitentiary",
+                "FlightNumber": "C-123",
+                "Status": "On Time",
+            },
+            {
+                "Location": "Los Angeles",
+                "FlightNumber": "OA815",
+                "Status": "Cancelled",
+            },
+            {
+                "Location": "Los Angeles",
+                "FlightNumber": "NWA121",
+                "Status": "Delayed",
+            },
+            # Add more custom flights as needed
+        ]
+
+        # Randomly select a custom flight
+        custom_flight = random.choice(custom_flights)
+
+        # Generate the arrival time for the custom flight based on conditions
+        if len(departures_today) == 0:
+            # If it's the only flight, set the time to 1 hour from now
+            custom_time = (datetime.datetime.now() + datetime.timedelta(hours=1)).strftime("%H:%M")
+        elif len(departures_today) == 1 or len(departures_today) == 2:
+            # If there's only one flight, set the time to 1 hour from now
+            custom_time = (datetime.datetime.now() + datetime.timedelta(hours=1)).strftime("%H:%M")
+        else:
+            # If it's the last flight, set the time to be after the last flight
+            last_flight_time = datetime.datetime.strptime(departures_today[-1]["ArrivalTime"], "%H:%M")
+            custom_time = (last_flight_time + datetime.timedelta(minutes=10)).strftime("%H:%M")
+
+        custom_flight["ArrivalTime"] = custom_time
+
+        # Manually add the custom flight between the 3rd and 4th flights in the list
+        if len(departures_today) >= 3:
+            departures_today.insert(3, custom_flight)  # Insert after the 3rd flight
+
+        # Capitalize the location names
+        for flight in departures_today:
+            flight["Location"] = ' '.join([word.capitalize() for word in flight["Location"].split()])
+
+        return departures_today
+    else:
+        # Handle error cases
+        raise Exception(f"Failed to fetch data. Status code: {response.status_code}")
+
+@app.route('/humberside_airport')
+def humberside_airport():
+    try:
+        # Use the helper function to get the flights with the custom flight added
+        departures_today = get_humberside_flight_data()
+
+        # Render template with data
+        return render_template(
+            'humberside_airport.html',
+            departures=departures_today
+        )
+    except Exception as e:
+        # Handle error case, such as API failure
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/flight_departures')
+def flight_departures():
+    try:
+        # Use your helper function or code to fetch the departure data
+        departures_today = get_humberside_flight_data()  # Assuming this function is defined
+
+        # Prepare the data to send back to the client
+        departures_data = {
+            "departures": [
+                {
+                    "FlightNumber": flight["FlightNumber"],
+                    "Location": flight["Location"],
+                    "ArrivalTime": flight["ArrivalTime"],
+                    "Status": flight["Status"]
+                }
+                for flight in departures_today
+            ]
+        }
+
+        return jsonify(departures_data)
+    
+    except Exception as e:
+        # Handle errors (such as fetching data from the API)
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/bus_map')
 def bus_map():
@@ -525,8 +844,11 @@ def format_time(iso_time):
 
 # Generate a random time between two given times
 def random_time_between(start, end):
+    """Generate a random time between two datetime objects."""
     delta = end - start
-    random_seconds = random.randint(0, int(delta.total_seconds()))
+    if delta.total_seconds() <= 0:
+        raise ValueError("End time must be greater than start time.")
+    random_seconds = random.randint(1, int(delta.total_seconds() - 1))  # Ensure the random time is strictly between
     return start + datetime.timedelta(seconds=random_seconds)
         
 # WebSocket connection handler to send historical data to newly connected clients

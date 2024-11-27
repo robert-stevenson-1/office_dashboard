@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classic Airport Departure Board</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #222;
+      color: #ffcc00;
+      font-family: monospace;
+      font-size: 1.5vw;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
+
+    .departure-board {
+      background-color: #333;
+      width: 90vw;
+      height: 90vh;
+      display: flex;
+      flex-direction: column;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .board-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 1.5vh 0;
+      border-bottom: 1px solid #444;
+      height: 8vh;
+      align-items: center;
+    }
+
+    .board-row:last-child {
+      border-bottom: none;
+    }
+
+    .column {
+      width: 20%;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+    }
+
+    .split-flap {
+      display: inline-block;
+      perspective: 1000px;
+      overflow: hidden;
+      position: relative;
+      height: 1.5em;
+      width: 1em;
+      line-height: 1em;
+      color: #ffcc00;
+    }
+
+    .flap-inner {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: #222;
+      color: #ffcc00;
+      transition: transform 0.5s ease-in-out;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.5em;
+    }
+
+    /* Front face of the letter */
+    .flap-front {
+      transform-origin: top;
+      transform: rotateX(0deg);
+    }
+
+    /* Back face of the letter */
+    .flap-back {
+      transform-origin: bottom;
+      transform: rotateX(90deg);
+    }
+
+    .flip .flap-front {
+      transform: rotateX(-90deg);
+    }
+
+    .flip .flap-back {
+      transform: rotateX(0deg);
+    }
+
+    /* Header Row Style */
+    .header-row {
+      font-weight: bold;
+      color: #ffcc00;
+      border-bottom: 2px solid #ffcc00;
+      height: 8vh;
+    }
+  </style>
+</head>
+<body>
+
+<div class="departure-board">
+  <!-- Header row -->
+  <div class="board-row header-row">
+    <div class="column">TIME</div>
+    <div class="column">DESTINATION</div>
+    <div class="column">FLIGHT</div>
+    <div class="column">AIRLINE</div>
+    <div class="column">STATUS</div>
+  </div>
+  
+  <!-- Example rows with split-flap effect -->
+  <div class="board-row">
+    <div class="column" id="time1"></div>
+    <div class="column" id="destination1"></div>
+    <div class="column" id="flight1"></div>
+    <div class="column" id="airline1"></div>
+    <div class="column" id="status1"></div>
+  </div>
+</div>
+
+<script>
+  // Data samples
+  const destinations = ["New York", "London", "Paris", "Tokyo", "Dubai"];
+  const airlines = ["American", "British Airways", "Air France", "Japan Airlines", "Emirates"];
+  const statuses = ["On Time", "Delayed", "Boarding", "Cancelled"];
+  
+  function createSplitFlapText(elementId, text) {
+    const container = document.getElementById(elementId);
+    container.innerHTML = ''; // Clear existing content
+
+    for (let char of text) {
+      const flap = document.createElement('div');
+      flap.className = 'split-flap';
+
+      const flapFront = document.createElement('div');
+      flapFront.className = 'flap-inner flap-front';
+      flapFront.textContent = char;
+
+      const flapBack = document.createElement('div');
+      flapBack.className = 'flap-inner flap-back';
+      flapBack.textContent = char;
+
+      flap.appendChild(flapFront);
+      flap.appendChild(flapBack);
+      container.appendChild(flap);
+
+      // Apply flip animation with random delay
+      setTimeout(() => flap.classList.add('flip'), Math.random() * 1000);
+    }
+  }
+
+  function updateBoard() {
+    // Generate random flight info
+    const randomDestination = destinations[Math.floor(Math.random() * destinations.length)];
+    const randomAirline = airlines[Math.floor(Math.random() * airlines.length)];
+    const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+    const randomTime = `${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`;
+    const randomFlight = `${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(Math.random() * 900 + 100)}`;
+
+    createSplitFlapText("time1", randomTime);
+    createSplitFlapText("destination1", randomDestination);
+    createSplitFlapText("flight1", randomFlight);
+    createSplitFlapText("airline1", randomAirline);
+    createSplitFlapText("status1", randomStatus);
+  }
+
+  // Update every 5 seconds
+  updateBoard();
+  setInterval(updateBoard, 5000);
+</script>
+
+</body>
+</html>
