@@ -158,6 +158,9 @@
             const tempY = data.temperature_data;
             const humY = data.humidity_data;
 
+            // Update the current temperature displayed when page loads
+            document.getElementById('currentTemperature').innerText = data.temperature_data[data.temperature_data.length - 1].toFixed(2);
+
             // Populate the chart with historical data
             Plotly.restyle('combinedChart', 'x', [tempX]);
             Plotly.restyle('combinedChart', 'y', [tempY], 0);  // Update first y-axis for temperature
@@ -171,7 +174,8 @@
         Plotly.extendTraces('combinedChart', { x: [[data.time]], y: [[data.humidity]] }, [1]);
 
         // Update the current temperature and averages displayed
-        document.getElementById('currentTemperature').innerText = data.current_temperature.toFixed(2);
+        // document.getElementById('currentTemperature').innerText = data.current_temperature.toFixed(2);
+        document.getElementById('currentTemperature').innerText = data.temperature_data[data.temperature_data.length - 1].toFixed(2);
         document.getElementById('averageTemperature5Min').innerText = data.average_temperature_5min.toFixed(2);
         document.getElementById('averageTemperature5Days').innerText = data.average_temperature_5days.toFixed(2);
     });
@@ -438,8 +442,8 @@
                 `;
                 departuresHtml += '<tbody>';
                 
-                // Limit the number of trains to a maximum of 8
-                const limitedDepartures = data.departures.slice(0, 8);
+                // Limit the number of trains to a maximum of 5
+                const limitedDepartures = data.departures.slice(0, 5);
 
                 limitedDepartures.forEach(departure => {
                     departuresHtml += `
@@ -671,8 +675,8 @@
                 <tbody>
             `;
             
-            // Limit the number of departures to a maximum of 8
-            const limitedDepartures = data.departures.slice(0, 8);
+            // Limit the number of departures to a maximum of 5
+            const limitedDepartures = data.departures.slice(0, 5);
 
             // Function to determine the airline based on the flight number
             const getAirline = (flightNumber) => {
@@ -692,6 +696,10 @@
                     return 'Northwest Airlines';
                 } else if (flightNumber.startsWith('OA')) {
                     return 'Oceanic Airlines';
+                } else if (flightNumber.startsWith('FLY')) {
+                    return 'FlyUS';
+                } else if (flightNumber.startsWith('PLM')) {
+                    return 'Plummet Airlines';
                 } else {
                     return 'Unknown Airline';  // Default if no match
                 }
@@ -715,6 +723,10 @@
                     return `<img src="{{ url_for('static', filename='/airlines/Snakes_on_a_plane_logo.png') }}" alt="Northwest Airlines" class="airline-logo">`;
                 } else if (flightNumber.startsWith('OA')) {
                     return `<img src="{{ url_for('static', filename='/airlines/Oceanic_airlines_logo.png') }}" alt="Oceanic Airlines" class="airline-logo">`;
+                } else if (flightNumber.startsWith('FLY')) {
+                    return `<img src="{{ url_for('static', filename='/airlines/FlyUS_logo.png') }}" alt="FlyUS" class="airline-logo">`;
+                } else if (flightNumber.startsWith('PLM')) {
+                    return `<img src="{{ url_for('static', filename='/airlines/Plummet_airlines_logo.png') }}" alt="Plummet Airlines" class="airline-logo">`;
                 } else {
                     return ``;  // Default logo
                 }
