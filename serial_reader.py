@@ -11,6 +11,7 @@ BAUD_RATE = 115200
 # Socket settings
 HOST = '127.0.0.1'  # Localhost
 PORT = 5001  # Port to communicate with the Flask server
+# PORT = 5002  # Port to communicate with the Flask server
 # PORT = 65432  # Port to communicate with the Flask server
 
 # Graceful shutdown flag
