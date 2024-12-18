@@ -417,34 +417,6 @@ def get_weather(city):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# # Route to fetch flight departure information from Humberside Airport
-# MAX_FLIGHTS = 5  # Change this to the desired number
-# @app.route('/departures_airport')
-# def departures_airport():
-#     try:
-#         # Fetch flight data
-#         response = requests.get(FLIGHT_API_URL, params={"access_key": FLIGHT_API_KEY, "dep_iata": AIRPORT_CODE})
-#         response.raise_for_status()
-        
-#         data = response.json()
-#         departures = []
-
-#         # Extract departure information with a limit
-#         count = 0  # Initialize a counter
-#         for flight in data.get("data", []):
-#             departures.append({
-#                 "flight_number": flight["flight"]["iata"],
-#                 "destination": flight["departure"]["iata"],
-#                 "departure_time": flight["departure"]["estimated"],
-#             })
-#             count += 1  # Increment the counter
-#             if count >= MAX_FLIGHTS:  # Check if the limit is reached
-#                 break
-
-#         return jsonify(departures)
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
-
 @app.route('/departures/', defaults={'departure_station': 'LCN', 'number_of_departures': 6}, methods=['GET'])
 @app.route('/departures/<departure_station>/', defaults={'number_of_departures': 6}, methods=['GET'])
 @app.route('/departures/<departure_station>/<number_of_departures>', methods=['GET'])
@@ -665,86 +637,129 @@ def flights():
     return render_template('flights.html')
 
 def get_humberside_flight_data():
-    # Fetch data from the Humberside Airport flight data URL
-    url = "https://www.humbersideairport.com/flightdata/flightsjson.txt"
+    """
+    Fetches live flight data from Humberside's API and parses the flight departures.
+
+    Returns:
+        list: A list of dictionaries containing departure flight details.
+    """
+    url = "https://hum.hangar.kmp.co.uk/api/liveflightsapi/retrieveliveflights?iataCode=hum"
+
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        # Add other headers here if required (e.g., Authorization)
     }
-
-    response = requests.get(url, headers=headers)
-
-    if response.status_code == 200:
-        # Parse JSON data
+    
+    try:
+        # Fetch the JSON data from the API
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()  # Raise an error for HTTP request issues
         flight_data = response.json()
+        
+        # Extract departures
+        departures = flight_data.get("departures", [])
+        
+        # Parse relevant details
+        parsed_departures = []
+        for flight in departures:
+            # Format scheduledDateTime and aggregatedDateTime to show only the time
+            scheduled_time = (
+                datetime.datetime.strptime(flight.get("scheduledDateTime"), "%Y-%m-%dT%H:%M:%S").strftime("%H:%M")
+                if flight.get("scheduledDateTime")
+                else None
+            )
+            aggregated_time = (
+                datetime.datetime.strptime(flight.get("aggregatedDateTime"), "%Y-%m-%dT%H:%M:%S").strftime("%H:%M")
+                if flight.get("aggregatedDateTime")
+                else None
+            )
 
-        # Filter departures for today
-        today = datetime.datetime.now().strftime("%Y-%m-%d")
-        departures_today = [
-            flight for flight in flight_data["Departures"] if flight["Date"].startswith(today)
-        ]
+            # Capitalize the location names
+            parsed_departures.append({
+                "flightNumber": flight.get("flightNumber"),
+                "scheduledDateTime": scheduled_time,
+                "aggregatedDateTime": aggregated_time,
+                "location": flight.get("location", "").title(),  # Capitalize first letter of each word
+                "airlineName": flight.get("airlineName"),
+                "airlineLogo": flight.get("airlineLogo"),
+                "statusMessage": flight.get("statusMessage", {}).get("mainMessage"),
+            })
 
         # List of custom flights
         custom_flights = [
             {
-                "Location": "Lompoc Penitentiary",
-                "FlightNumber": "C-123",
-                "Status": "On Time",
+                "location": "Lompoc Penitentiary",
+                "flightNumber": "C-123",
+                "airlineName": "Con Air",
+                "airlineLogo": "static/airlines/Con_air_logo.png",                
+                "statusMessage": "On Time",
             },
             {
-                "Location": "Los Angeles",
-                "FlightNumber": "OA815",
-                "Status": "Cancelled",
+                "location": "Los Angeles",
+                "flightNumber": "OA815",
+                "airlineName": "Oceanic Airlines",
+                "airlineLogo": "static/airlines/Oceanic_airlines_logo.png",     
+                "statusMessage": "Cancelled",
             },
             {
-                "Location": "Los Angeles",
-                "FlightNumber": "NWA121",
-                "Status": "Delayed",
-            },
-            # Add more custom flights as needed
+                "location": "Los Angeles",
+                "flightNumber": "NWA121",
+                "airlineName": "Northwest Airlines",
+                "airlineLogo": "static/airlines/Snakes_on_a_plane_logo.png",     
+                "statusMessage": "Delayed",
+            }
         ]
 
         # Randomly select a custom flight
         custom_flight = random.choice(custom_flights)
 
-        # Generate the arrival time for the custom flight based on conditions
-        if len(departures_today) == 0:
+        # Generate the departure time for the custom flight based on conditions
+        if len(parsed_departures) == 0:
             # If it's the only flight, set the time to 1 hour from now
             custom_time = (datetime.datetime.now() + datetime.timedelta(hours=1)).strftime("%H:%M")
-        elif len(departures_today) == 1 or len(departures_today) == 2:
-            # If there's only one flight, set the time to 1 hour from now
+        elif len(parsed_departures) == 1 or len(parsed_departures) == 2:
+            # If there's only one or two flights, set the time to 1 hour from now
             custom_time = (datetime.datetime.now() + datetime.timedelta(hours=1)).strftime("%H:%M")
         else:
-            # If it's the last flight, set the time to be after the last flight
-            last_flight_time = datetime.datetime.strptime(departures_today[-1]["ArrivalTime"], "%H:%M")
-            custom_time = (last_flight_time + datetime.timedelta(minutes=10)).strftime("%H:%M")
+            # If there are more than two flights, set the time between the 3rd and 4th flight
+            flight_3_time = datetime.datetime.strptime(parsed_departures[2]["aggregatedDateTime"], "%H:%M")
+            flight_4_time = datetime.datetime.strptime(parsed_departures[3]["aggregatedDateTime"], "%H:%M")
+            
+            # Check if there is enough time between flight 3 and flight 4 to generate a random time
+            time_diff = (flight_4_time - flight_3_time).total_seconds() // 60  # in minutes
 
-        custom_flight["ArrivalTime"] = custom_time
+            # If the difference is less than 1 minute, set a default time or adjust as needed
+            if time_diff < 1:
+                custom_time = (flight_3_time + datetime.timedelta(minutes=1)).strftime("%H:%M")
+            else:
+                # Generate a random departure time between the 3rd and 4th flights
+                random_time_delta = random.randint(1, int(time_diff))  # Random minutes
+                custom_time = (flight_3_time + datetime.timedelta(minutes=random_time_delta)).strftime("%H:%M")
+
+        custom_flight["aggregatedDateTime"] = custom_time  # Assign the generated time to the custom flight
 
         # Manually add the custom flight between the 3rd and 4th flights in the list
-        if len(departures_today) >= 3:
-            departures_today.insert(3, custom_flight)  # Insert after the 3rd flight
+        if len(parsed_departures) >= 3:
+            parsed_departures.insert(3, custom_flight)  # Insert after the 3rd flight
         else:
-            departures_today.append(custom_flight)  # Add to the end if fewer than 3 flights
-
-        # Capitalize the location names
-        for flight in departures_today:
-            flight["Location"] = ' '.join([word.capitalize() for word in flight["Location"].split()])
-
-        return departures_today
-    else:
-        # Handle error cases
-        raise Exception(f"Failed to fetch data. Status code: {response.status_code}")
+            parsed_departures.append(custom_flight)  # Add to the end if fewer than 3 flights
+        
+        return parsed_departures
+    
+    except requests.RequestException as e:
+        print(f"Error fetching flight data: {e}")
+        return []
 
 @app.route('/humberside_airport')
 def humberside_airport():
     try:
         # Use the helper function to get the flights with the custom flight added
-        departures_today = get_humberside_flight_data()
+        departures = get_humberside_flight_data()
 
         # Render template with data
         return render_template(
             'humberside_airport.html',
-            departures=departures_today
+            departures=departures
         )
     except Exception as e:
         # Handle error case, such as API failure
@@ -753,26 +768,192 @@ def humberside_airport():
 @app.route('/flight_departures')
 def flight_departures():
     try:
-        # Use your helper function or code to fetch the departure data
-        departures_today = get_humberside_flight_data()  # Assuming this function is defined
-
+        # Fetch the departure data (assuming this function is defined)
+        departures = get_humberside_flight_data()  # Should return a list of flight data
+        
         # Prepare the data to send back to the client
         departures_data = {
             "departures": [
                 {
-                    "FlightNumber": flight["FlightNumber"],
-                    "Location": flight["Location"],
-                    "ArrivalTime": flight["ArrivalTime"],
-                    "Status": flight["Status"]
+                    "flightNumber": flight.get("flightNumber", ""),
+                    "scheduledDateTime": flight.get("scheduledDateTime", ""),
+                    "aggregatedDateTime": flight.get("aggregatedDateTime", ""),
+                    "location": flight.get("location", "").title(),  # Capitalize location
+                    "airlineName": flight.get("airlineName", ""),
+                    "airlineLogo": flight.get("airlineLogo", ""),
+                    "statusMessage": flight.get("statusMessage", "")
                 }
-                for flight in departures_today
+                for flight in departures
             ]
         }
 
         return jsonify(departures_data)
     
     except Exception as e:
-        # Handle errors (such as fetching data from the API)
+        # Handle errors and return an error message
+        return jsonify({"error": str(e)}), 500
+
+def get_heathrow_flight_data():
+    """
+    Fetches live flight data from Heathrow's API and parses the flight departures.
+
+    Returns:
+        list: A list of dictionaries containing departure flight details.
+    """
+    # Get the current date and time in UTC
+    now = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=0.05)
+
+    # Define the URL with query parameters
+    url = 'https://api-dp-prod.dp.heathrow.com/pihub/flights/departures'
+    params = {
+        'date': now.strftime("%Y-%m-%d"),
+        'orderBy': 'localDepartureTime',
+        'excludeCodeShares': 'true'
+    }
+    headers = {
+        'Origin': 'https://www.heathrow.com',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept-Encoding': 'gzip, deflate',
+        'Accept': 'application/json',
+    }
+
+    try:
+        # Make the GET request
+        response = requests.get(url, params=params, headers=headers)
+
+        # Check if the request was successful
+        if response.status_code == 200:
+            data = response.json()
+
+            parsed_departures = []
+
+            for flight in data:
+                flight_service = flight.get('flightService', {})
+
+                # Extract flight number
+                flight_number = flight_service.get('icaoFlightIdentifier')
+
+                # Extract flight status message
+                status_message = flight_service.get('aircraftMovement', {}).get('aircraftMovementStatus', [{}])[0].get('message')
+
+                # Handling departure time
+                departure_time_str = None
+                if flight_service.get('aircraftMovement', {}).get('aircraftMovementStatus', [{}])[0].get('statusData'):
+                    departure_time_data = flight_service.get('aircraftMovement', {}).get('aircraftMovementStatus', [{}])[0].get('statusData')[0]
+                    departure_time_str = departure_time_data.get('data')  # e.g., '06:16'
+                
+                # If we have a valid time string, convert it to datetime
+                departure_time = None
+                if departure_time_str:
+                    try:
+                        departure_time = datetime.datetime.strptime(departure_time_str, "%H:%M").replace(year=now.year, month=now.month, day=now.day)
+                        departure_time = departure_time.replace(tzinfo=datetime.timezone.utc)  # Make departure time UTC aware
+                    except ValueError:
+                        departure_time = None
+
+                # Only proceed if the flight departs after the current time
+                if departure_time and departure_time > now and departure_time <= now + datetime.timedelta(hours=1):
+                    # Extract destination location
+                    ports_of_call = flight_service.get('aircraftMovement', {}).get('route', {}).get('portsOfCall', [])
+                    destination_location = 'Unknown'  # Default value
+
+                    # Search for the DESTINATION portOfCall
+                    for port in ports_of_call:
+                        if port.get('portOfCallType') == 'DESTINATION':
+                            destination_location = port.get('airportFacility', {}).get('airportCityLocation', {}).get('name', 'Unknown')
+                            break  # Exit loop once the destination is found
+
+                    # Extract airline info
+                    airline_name = flight_service.get('airlineParty', {}).get('name', 'Unknown')
+                    airline_logo_url = flight_service.get('airlineParty', {}).get('tailfinImageUrl', '')
+
+                    # Appending the parsed departure
+                    parsed_departures.append({
+                        "flightNumber": flight_number,
+                        "aggregatedDateTime": departure_time.strftime("%H:%M") if departure_time else 'Unknown',
+                        "location": destination_location,
+                        "airlineName": airline_name,
+                        "airlineLogo": airline_logo_url,
+                        "statusMessage": status_message
+                    })    
+
+            # List of custom flights
+            custom_flights = [
+                {
+                    "location": "Lompoc Penitentiary",
+                    "flightNumber": "C-123",
+                    "airlineName": "Con Air",
+                    "airlineLogo": "static/airlines/Con_air_logo.png",                
+                    "statusMessage": "On Time",
+                },
+                {
+                    "location": "Los Angeles",
+                    "flightNumber": "OA815",
+                    "airlineName": "Oceanic Airlines",
+                    "airlineLogo": "static/airlines/Oceanic_airlines_logo.png",     
+                    "statusMessage": "Cancelled",
+                },
+                {
+                    "location": "Los Angeles",
+                    "flightNumber": "NWA121",
+                    "airlineName": "Northwest Airlines",
+                    "airlineLogo": "static/airlines/Snakes_on_a_plane_logo.png",     
+                    "statusMessage": "Delayed",
+                }
+            ]
+
+            # Randomly select a custom flight
+            custom_flight = random.choice(custom_flights)
+
+            # Generate the departure time for the custom flight based on conditions
+            if len(parsed_departures) == 0:
+                # If it's the only flight, set the time to 1 hour from now
+                custom_time = (datetime.datetime.now() + datetime.timedelta(hours=1)).strftime("%H:%M")
+            elif len(parsed_departures) == 1 or len(parsed_departures) == 2:
+                # If there's only one or two flights, set the time to 1 hour from now
+                custom_time = (datetime.datetime.now() + datetime.timedelta(hours=1)).strftime("%H:%M")
+            else:
+                # If there are more than two flights, set the time between the 3rd and 4th flight
+                flight_3_time = datetime.datetime.strptime(parsed_departures[2]["aggregatedDateTime"], "%H:%M")
+                flight_4_time = datetime.datetime.strptime(parsed_departures[3]["aggregatedDateTime"], "%H:%M")
+                
+                # Ensure there is enough time between the 3rd and 4th flight
+                time_difference = (flight_4_time - flight_3_time).total_seconds() // 60
+                if time_difference > 0:
+                    # Generate a random departure time between the 3rd and 4th flights
+                    random_time_delta = random.randint(1, int(time_difference))  # Random minutes
+                    custom_time = (flight_3_time + datetime.timedelta(minutes=random_time_delta)).strftime("%H:%M")
+                else:
+                    # Default behavior if there's no valid time difference
+                    custom_time = (datetime.datetime.now() + datetime.timedelta(hours=1)).strftime("%H:%M")
+
+            custom_flight["aggregatedDateTime"] = custom_time  # Assign the generated time to the custom flight
+
+            # Manually add the custom flight between the 3rd and 4th flights in the list
+            if len(parsed_departures) >= 3:
+                parsed_departures.insert(3, custom_flight)  # Insert after the 3rd flight
+            else:
+                parsed_departures.append(custom_flight)  # Add to the end if fewer than 3 flights        
+
+        return parsed_departures
+    
+    except requests.RequestException as e:
+        print(f"Error fetching flight data: {e}")
+        return []
+
+@app.route('/heathrow_airport')
+def heathrow_airport():
+    try:
+        # Use the helper function to get the flights with the custom flight added
+        departures = get_heathrow_flight_data()
+
+        # Render template with data
+        return render_template(
+            'heathrow_airport.html',
+            departures=departures
+        )
+    except Exception as e:
+        # Handle error case, such as API failure
         return jsonify({"error": str(e)}), 500
 
 @app.route('/bus_map')

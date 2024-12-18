@@ -678,60 +678,7 @@
             // Limit the number of departures to a maximum of 5
             const limitedDepartures = data.departures.slice(0, 5);
 
-            // Function to determine the airline based on the flight number
-            const getAirline = (flightNumber) => {
-                if (flightNumber.startsWith('T')) {
-                    return 'Eastern Airways';
-                } else if (flightNumber.startsWith('KL')) {
-                    return 'KLM';
-                } else if (flightNumber.startsWith('CHC')) {
-                    return 'CHC Helicopter';
-                } else if (flightNumber.startsWith('UNC')) {
-                    return 'Uni-Fly';
-                } else if (flightNumber.startsWith('BHL')) {
-                    return 'Bristow Helicopters';
-                } else if (flightNumber.startsWith('C-123')) {
-                    return 'Con Air';
-                } else if (flightNumber.startsWith('NWA')) {
-                    return 'Northwest Airlines';
-                } else if (flightNumber.startsWith('OA')) {
-                    return 'Oceanic Airlines';
-                } else if (flightNumber.startsWith('FLY')) {
-                    return 'FlyUS';
-                } else if (flightNumber.startsWith('PLM')) {
-                    return 'Plummet Airlines';
-                } else {
-                    return 'Unknown Airline';  // Default if no match
-                }
-            };
-
-            // Function to determine the airline logo based on the flight number
-            const getAirlineLogo = (flightNumber) => {
-                if (flightNumber.startsWith('T')) {
-                    return `<img src="{{ url_for('static', filename='/airlines/Eastern_airways_logo.png') }}" alt="Eastern Airways" class="airline-logo">`;
-                } else if (flightNumber.startsWith('KL')) {
-                    return `<img src="{{ url_for('static', filename='/airlines/KLM_logo.png') }}" alt="KLM" class="airline-logo">`;
-                } else if (flightNumber.startsWith('CHC')) {
-                    return `<img src="{{ url_for('static', filename='/airlines/CHC_Helicopter_logo.png') }}" alt="CHC Helicopter" class="airline-logo">`;
-                } else if (flightNumber.startsWith('UNC')) {
-                    return `<img src="{{ url_for('static', filename='/airlines/UNI_FLY_logo.svg') }}" alt="Uni-Fly" class="airline-logo">`;
-                } else if (flightNumber.startsWith('BHL')) {
-                    return `<img src="{{ url_for('static', filename='/airlines/Bristow_helicopters_logo.png') }}" alt="Bristow Helicopters" class="airline-logo">`;
-                } else if (flightNumber.startsWith('C-123')) {
-                    return `<img src="{{ url_for('static', filename='/airlines/Con_air_logo.png') }}" alt="Con Air" class="airline-logo">`;
-                } else if (flightNumber.startsWith('NWA')) {
-                    return `<img src="{{ url_for('static', filename='/airlines/Snakes_on_a_plane_logo.png') }}" alt="Northwest Airlines" class="airline-logo">`;
-                } else if (flightNumber.startsWith('OA')) {
-                    return `<img src="{{ url_for('static', filename='/airlines/Oceanic_airlines_logo.png') }}" alt="Oceanic Airlines" class="airline-logo">`;
-                } else if (flightNumber.startsWith('FLY')) {
-                    return `<img src="{{ url_for('static', filename='/airlines/FlyUS_logo.png') }}" alt="FlyUS" class="airline-logo">`;
-                } else if (flightNumber.startsWith('PLM')) {
-                    return `<img src="{{ url_for('static', filename='/airlines/Plummet_airlines_logo.png') }}" alt="Plummet Airlines" class="airline-logo">`;
-                } else {
-                    return ``;  // Default logo
-                }
-            };
-
+            console.log(limitedDepartures);
 
             // Function to determine the status class
             const getStatusClass = (status) => {
@@ -746,17 +693,15 @@
 
             // Loop through departures and generate the table rows
             limitedDepartures.forEach(departure => {
-                const airline = getAirline(departure.FlightNumber);  // Get the airline based on the flight number
-                const airlineLogo = getAirlineLogo(departure.FlightNumber);
-                const statusClass = getStatusClass(departure.Status);  // Get the status class based on the status
+                const statusClass = getStatusClass(departure.statusMessage);  // Get the status class based on the status
                 departuresHtml += `
                     <tr>
-                        <td>${departure.ArrivalTime}</td>
-                        <td>${departure.Location}</td>
-                        <td>${departure.FlightNumber}</td>
-                        <td><span class="highlight">${airline}</span></td>
-                        <td>${airlineLogo}</td>
-                        <td><span class="${statusClass}">${departure.Status}</span></td>
+                        <td>${departure.aggregatedDateTime}</td>
+                        <td>${departure.location}</td>
+                        <td>${departure.flightNumber}</td>
+                        <td><span class="highlight">${departure.airlineName}</span></td>
+                        <td><img src="${departure.airlineLogo}" alt="" class="airline-logo"></td>
+                        <td><span class="${statusClass}">${departure.statusMessage}</span></td>
                     </tr>
                 `;
             });

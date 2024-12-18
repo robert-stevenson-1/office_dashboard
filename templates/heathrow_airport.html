@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heathrow Airport Departures</title>
+    <style>
+        /* General Reset */
+        html, body {
+            overflow-y: hidden; /* Hide the vertical scrollbar */
+            height: 100%; /* Ensure the body fills the viewport */
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #222;
+            color: white;
+            margin: 0;
+            padding: 12px 0px 12px 0px;
+        }
+
+        h1 {
+            text-align: center;
+            margin: 10px 0px 10px 0px;
+            font-size: 4em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 3em;
+        }
+
+        thead th {
+            background-color: #ffd700;
+            color: #000;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            border-bottom: 2px solid #ffd700;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #555;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #333;
+        }
+
+        td {
+            padding: 12px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        /* Time column */
+        td:nth-child(1) {
+            color: #ffd700;
+        }
+
+
+        /* Airline Name column */
+        td:nth-child(4) {
+            font-weight: bold;
+            color: #ffd700;
+            width: 15%;
+        }
+
+        p {
+            text-align: center;
+            font-size: 1.5em;
+            margin-top: 40px;
+            color: #ccc;
+        }
+
+        .airline-logo {
+            height: 70px; /* Increase logo size */
+            width: auto;
+            display: block; /* Makes the image a block-level element */
+            margin: 0 auto; /* Centers the image horizontally */
+            mix-blend-mode: screen; /* Make white background blend with page */
+            background-color: black; /* Matches the surrounding background */
+        }
+        .highlight {
+            color: #ffcc00; /* Neon yellow for highlight */
+        }
+        /* Custom styles for delayed and cancelled statuses */
+        .highlight-yellow {
+            color: #ffcc00; /* Yellow for Delayed */
+            font-weight: bold; /* Optional: make the text bold */
+        }
+        .highlight-red {
+            color: #ff0000; /* Red for Cancelled */
+            font-weight: bold; /* Optional: make the text bold */
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h1>Heathrow Airport Departures</h1>
+
+        {% if departures %}
+        <table id="trainSchedule">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Destination</th>
+                    <th>Flight</th>
+                    <th colspan="2">Airline</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for flight in departures %}
+                <tr>
+                    <td>{{ flight.aggregatedDateTime }}</td>
+                    <td>{{ flight.location }}</td>
+                    <td>{{ flight.flightNumber }}</td>
+                    <td>{{ flight.airlineName }}</td>
+                    <td><img src="{{ flight.airlineLogo }}" alt="" class="airline-logo"></td>
+                    <td>
+                      <span class="{{ 'highlight-yellow' if flight.statusMessage == 'Delayed' else 'highlight-red' if flight.statusMessage == 'Cancelled' or flight.statusMessage == 'Not Operating' else '' }}">
+                        {{ flight.statusMessage }}
+                      </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">No departures today.</div>
+        {% endif %}
+    </div>
+</body>
+</html>

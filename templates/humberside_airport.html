@@ -80,6 +80,8 @@
             width: auto;
             display: block; /* Makes the image a block-level element */
             margin: 0 auto; /* Centers the image horizontally */
+            mix-blend-mode: screen; /* Make white background blend with page */
+            background-color: black; /* Matches the surrounding background */
         }
         .highlight {
             color: #ffcc00; /* Neon yellow for highlight */
@@ -113,54 +115,14 @@
             <tbody>
                 {% for flight in departures %}
                 <tr>
-                    <td>{{ flight.ArrivalTime }}</td>
-                    <td>{{ flight.Location }}</td>
-                    <td>{{ flight.FlightNumber }}</td>
+                    <td>{{ flight.aggregatedDateTime }}</td>
+                    <td>{{ flight.location }}</td>
+                    <td>{{ flight.flightNumber }}</td>
+                    <td>{{ flight.airlineName }}</td>
+                    <td><img src="{{ flight.airlineLogo }}" alt="" class="airline-logo"></td>
                     <td>
-                        {% if flight.FlightNumber.startswith('T') %}
-                            Eastern Airways
-                        {% elif flight.FlightNumber.startswith('KL') %}
-                            KLM
-                        {% elif flight.FlightNumber.startswith('CHC') %}
-                            CHC Helicopter
-                        {% elif flight.FlightNumber.startswith('UNC') %}
-                            Uni-Fly
-                        {% elif flight.FlightNumber.startswith('BHL') %}
-                            Bristow Helicopters
-                        {% elif flight.FlightNumber.startswith('C-123') %}
-                            Con Air
-                        {% elif flight.FlightNumber.startswith('NWA') %}
-                            Northwest Airlines
-                        {% elif flight.FlightNumber.startswith('OA') %}
-                            Oceanic Airlines
-                        {% else %}
-                            <!-- Unknown Airline -->
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if flight.FlightNumber.startswith('T') %}
-                            <img src="{{ url_for('static', filename='/airlines/Eastern_airways_logo.png') }}" alt="Eastern Airways" class="airline-logo">
-                        {% elif flight.FlightNumber.startswith('KL') %}
-                            <img src="{{ url_for('static', filename='/airlines/KLM_logo.png') }}" alt="KLM" class="airline-logo">
-                        {% elif flight.FlightNumber.startswith('CHC') %}
-                            <img src="{{ url_for('static', filename='/airlines/CHC_Helicopter_logo.png') }}" alt="CHC Helicopter" class="airline-logo">
-                        {% elif flight.FlightNumber.startswith('UNC') %}
-                            <img src="{{ url_for('static', filename='/airlines/UNI_FLY_logo.svg') }}" alt="Uni-Fly" class="airline-logo">
-                        {% elif flight.FlightNumber.startswith('BHL') %}
-                            <img src="{{ url_for('static', filename='/airlines/Bristow_helicopters_logo.png') }}" alt="Bristow Helicopters" class="airline-logo">
-                        {% elif flight.FlightNumber.startswith('C-123') %}
-                            <img src="{{ url_for('static', filename='/airlines/Con_air_logo.png') }}" alt="Con Air" class="airline-logo">
-                        {% elif flight.FlightNumber.startswith('NWA') %}
-                            <img src="{{ url_for('static', filename='/airlines/Snakes_on_a_plane_logo.png') }}" alt="Northwest Airlines" class="airline-logo">                            
-                        {% elif flight.FlightNumber.startswith('OA') %}
-                            <img src="{{ url_for('static', filename='/airlines/Oceanic_airlines_logo.png') }}" alt="Oceanic Airlines" class="airline-logo">
-                        {% else %}
-                            <!-- <img src="https://example.com/default_logo.png" alt="Unknown Airline" class="airline-logo"> -->
-                        {% endif %}
-                    </td>
-                    <td>
-                      <span class="{{ 'highlight-yellow' if flight.Status == 'Delayed' else 'highlight-red' if flight.Status == 'Cancelled' or flight.Status == 'Not Operating' else '' }}">
-                        {{ flight.Status }}
+                      <span class="{{ 'highlight-yellow' if flight.statusMessage == 'Delayed' else 'highlight-red' if flight.statusMessage == 'Cancelled' or flight.statusMessage == 'Not Operating' else '' }}">
+                        {{ flight.statusMessage }}
                       </span>
                     </td>
                 </tr>

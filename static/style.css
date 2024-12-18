@@ -388,6 +388,8 @@ footer {
     width: auto;
     display: block; /* Makes the image a block-level element */
     margin: 0 auto; /* Centers the image horizontally */
+    mix-blend-mode: screen; /* Make white background blend with page */
+    background-color: black; /* Matches the surrounding background */
 }
 
 #flightDepartures {
