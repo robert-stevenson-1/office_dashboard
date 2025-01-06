@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office Dashboard</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='duck.png') }}" sizes="32x32">
+
+    <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="info-container">
+    <div class="info">
+        <h2>Office Conditions</h2>
+        <p>Current Temperature: <span id="currentTemperature">--</span> °C</p>
+        <p>Average Temperature (Last 5 minutes): <span id="averageTemperature5Min">--</span> °C</p>
+        <p>Average Temperature (Last 5 days): <span id="averageTemperature5Days">--</span> °C</p>
+    </div>
+
+    
+</div>
+
+<div class="container" style="height: 100%; display: flex; flex-direction: column;">
+    <div id="chartContainer" class="chart-container info" style="min-height: 600px; flex-grow: 1; display: flex; flex-direction: column;">
+        <div id="combinedChart" style="flex-grow: 1;"></div>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+
+    // Initialize Plotly chart for temperature and humidity on the same graph
+    const layout = {
+        title: 'Temperature and Humidity',
+        xaxis: { title: 'Time' },
+        yaxis: { title: 'Temperature (°C)', side: 'left' },
+        yaxis2: { title: 'Humidity (%)', side: 'right', overlaying: 'y', showgrid: false },
+        margin: { t: 50, r: 30, l: 50, b: 50 }
+    };
+
+    // Initial Plot for temperature and humidity
+    Plotly.newPlot('combinedChart', [
+        { x: [], y: [], mode: 'lines', name: 'Temperature', line: { color: 'red' }, yaxis: 'y' },
+        { x: [], y: [], mode: 'lines', name: 'Humidity', line: { color: 'blue' }, yaxis: 'y2' }
+    ], layout);
+
+    // Fetch initial historical data for the last 'n' hours
+    const hours = 24;  // You can make this dynamic based on user input
+
+    fetch(`/get_last_hours/${hours}`)
+        .then(response => response.json())
+        .then(data => {
+            const tempX = data.timestamps;
+            const tempY = data.temperature_data;
+            const humY = data.humidity_data;
+
+            // Update the current temperature displayed when page loads
+            document.getElementById('currentTemperature').innerText = data.temperature_data[data.temperature_data.length - 1].toFixed(2);
+
+            // Populate the chart with historical data
+            Plotly.restyle('combinedChart', 'x', [tempX]);
+            Plotly.restyle('combinedChart', 'y', [tempY], 0);  // Update first y-axis for temperature
+            Plotly.restyle('combinedChart', 'y', [humY], 1);   // Update second y-axis for humidity
+        });
+
+    // Listen for new data in real time and update the chart
+    socket.on('new_data', function (data) {
+        // Extend traces with new temperature and humidity data
+        Plotly.extendTraces('combinedChart', { x: [[data.time]], y: [[data.temperature]] }, [0]);
+        Plotly.extendTraces('combinedChart', { x: [[data.time]], y: [[data.humidity]] }, [1]);
+
+        // Update the current temperature and averages displayed
+        // document.getElementById('currentTemperature').innerText = data.current_temperature.toFixed(2);
+        document.getElementById('currentTemperature').innerText = data.temperature_data[data.temperature_data.length - 1].toFixed(2);
+        document.getElementById('averageTemperature5Min').innerText = data.average_temperature_5min.toFixed(2);
+        document.getElementById('averageTemperature5Days').innerText = data.average_temperature_5days.toFixed(2);
+    });
+
+    const maxPoints = 60; // Adjust this based on your requirement
+
+    function manageData() {
+        // Fetch the current x data and limit it to the maxPoints
+        const currentX = Plotly.d3.select('#combinedChart').data()[0].x;
+        const currentYTemp = Plotly.d3.select('#combinedChart').data()[0].y[0];
+        const currentYHum = Plotly.d3.select('#combinedChart').data()[1].y[0];
+
+        if (currentX.length > maxPoints) {
+            Plotly.restyle('combinedChart', {
+                x: [currentX.slice(currentX.length - maxPoints)],
+                y: [currentYTemp.slice(currentYTemp.length - maxPoints)],
+            }, [0]);
+            Plotly.restyle('combinedChart', {
+                y: [currentYHum.slice(currentYHum.length - maxPoints)],
+            }, [1]);
+        }
+    }
+
+    // Call manageData after extending traces
+    setInterval(() => {
+        fetch(`/get_last_hours/${hours}`)
+            .then(response => response.json())
+            .then(data => {
+                // Existing code for extending traces...
+                manageData(); // Manage data after fetching new data
+            });
+    }, 60000); 
+
+</script>
+
+</body>
+</html>

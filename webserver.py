@@ -360,6 +360,11 @@ def receive_socket_data():
 def home():
     return render_template('index.html')
 
+# Route to serve the main webpage
+@app.route('/temperature')
+def temperature():
+    return render_template('temperature.html')
+
 # Route to fetch latest news
 @app.route('/news')
 def news():
