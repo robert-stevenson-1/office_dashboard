@@ -5,7 +5,7 @@ import sys
 import signal
 
 # Serial connection settings
-SERIAL_PORT = '/dev/ttyUSB1'  # Update with your serial port
+SERIAL_PORT = '/dev/ttyUSB0'  # Update with your serial port
 BAUD_RATE = 115200
 
 # Socket settings

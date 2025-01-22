@@ -131,7 +131,8 @@ def filter_last_n_hours(n_hours):
             reader = csv.reader(csvfile)
             for row in reader:
                 timestamp_str, temperature, humidity = row
-                timestamp = datetime.datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                timestamp_str_cleaned = timestamp_str.replace('\x00', '')
+                timestamp = datetime.datetime.strptime(timestamp_str_cleaned, "%Y-%m-%d %H:%M:%S")
                 
                 if timestamp >= time_ago:
                     filtered_timestamps.append(timestamp.strftime("%Y-%m-%d %H:%M:%S"))
