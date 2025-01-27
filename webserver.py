@@ -366,6 +366,11 @@ def home():
 def temperature():
     return render_template('temperature.html')
 
+# Route to serve the main webpage
+@app.route('/printers')
+def printers():
+    return render_template('printers.html')
+
 # Route to fetch latest news
 @app.route('/news')
 def news():

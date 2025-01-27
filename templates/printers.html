@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office Dashboard</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='duck.png') }}" sizes="32x32">
+
+    <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="info-container">
+    <div class="info">
+        <h2>3D Printers</h2>
+    </div>
+
+    
+</div>
+
+<div class="info-container">
+    <div class="info">
+        <h2>FabLab Mini Right</h2>
+        <img src="http://printer1.network.uni/webcam/?action=stream" style="width:100%">
+    </div>
+    <div class="info">
+        <h2>FabLab I3</h2>
+        <img src="http://fab-i3.network.uni/webcam/?action=stream" style="width:100%">
+    </div>
+
+    <div class="info">
+        <h2>FabLab Mini Left</h2>
+        <img src="http://printer2.network.uni/webcam/?action=stream" style="width:100%">
+    </div>
+</div>
+
+</body>
+</html>
