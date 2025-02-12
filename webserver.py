@@ -361,15 +361,17 @@ def receive_socket_data():
 def home():
     return render_template('index.html')
 
-# Route to serve the main webpage
 @app.route('/temperature')
 def temperature():
     return render_template('temperature.html')
 
-# Route to serve the main webpage
 @app.route('/printers')
 def printers():
     return render_template('printers.html')
+
+@app.route('/leaderboard')
+def leaderboard():
+    return render_template('leaderboard.html')
 
 # Route to fetch latest news
 @app.route('/news')
