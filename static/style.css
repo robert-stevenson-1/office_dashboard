@@ -26,19 +26,49 @@ header {
     flex-wrap: wrap;
 }
 
-.info, .bus-info {
+.info {
     flex: 1;
     min-width: 300px;
     background-color: white;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    padding: 15px;
+    padding: 5px 5px 5px 5px;
     text-align: center;
 }
 
-.info p, .bus-info p {
+.info p {
     font-size: 1.5em;
     margin: 10px 0;
+}
+
+.bus-info {
+    flex: 1;
+    min-width: 300px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 0px 0px 0px 0px;
+    text-align: center;
+}
+
+.train-info {
+    flex: 1;
+    min-width: 300px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 0 0 5px 0;
+    text-align: center;
+}
+
+.airport-info {
+    flex: 1;
+    min-width: 300px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 0 0 5px 0;
+    text-align: center;
 }
 
 /* .macice-status p {
@@ -89,9 +119,6 @@ footer {
     width: 100%;
     z-index: 9999;
 }
-
-
-
 
 .dashboard {
     background-color: #3f51b5;
@@ -293,6 +320,7 @@ footer {
 .bus_map_container {
     background-color: #014785;
     color: white;
+    padding: 0px 0px 0px 0px;
 }
 
 
