@@ -92,7 +92,6 @@
             color: #ecf0f1;
         }
 
-
         .score {
             color: #ecf0f1;
         }
@@ -134,172 +133,62 @@
 </head>
 <body>
 
-<div class="info-container">
-    <div class="info">
-        <h2>Leaderboard</h2>
+    <div class="info-container">
+        <div class="info">
+            <h2>Leaderboard</h2>
+        </div>
     </div>
-</div>
-
-<div class="info-container">
-    <div class="info">
-        <table id="leaderboard">
-            <thead>
-                <tr>
-                    <th>Rank</th>
-                    <th>Name</th>
-                    <th>F Wins</th>
-                    <th>L Wins</th>
-                    <th>Games Played</th>
-                    <th>Total Wins</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="rank"></td>
-                    <td class="player">Aura</td>
-                    <td class="team-f">1</td> <!-- Wins for Team F -->
-                    <td class="team-l">2</td> <!-- Wins for Team L -->
-                    <td class="games-played">5</td> <!-- Games Played -->
-                    <td class="total-wins"></td> <!-- Total Wins (Calculated) -->
-                </tr>
-
-                <tr>
-                    <td class="rank"></td>
-                    <td class="player">Ben</td>
-                    <td class="team-f">0</td> <!-- Wins for Team F -->
-                    <td class="team-l">2</td> <!-- Wins for Team L -->
-                    <td class="games-played">5</td> <!-- Games Played -->
-                    <td class="total-wins"></td> <!-- Total Wins (Calculated) -->
-                </tr>
-
-                <tr>
-                    <td class="rank"></td>
-                    <td class="player">Jonathan</td>
-                    <td class="team-f">1</td> <!-- Wins for Team F -->
-                    <td class="team-l">4</td> <!-- Wins for Team L -->
-                    <td class="games-played">8</td> <!-- Games Played -->
-                    <td class="total-wins"></td> <!-- Total Wins (Calculated) -->
-                </tr>
-
-                <tr>
-                    <td class="rank"></td>
-                    <td class="player">Rajitha</td>
-                    <td class="team-f">0</td> <!-- Wins for Team F -->
-                    <td class="team-l">0</td> <!-- Wins for Team L -->
-                    <td class="games-played">3</td> <!-- Games Played -->
-                    <td class="total-wins"></td> <!-- Total Wins (Calculated) -->
-                </tr>
-
-                <tr>
-                    <td class="rank"></td>
-                    <td class="player">Riccardo</td>
-                    <td class="team-f">1</td> <!-- Wins for Team F -->
-                    <td class="team-l">0</td> <!-- Wins for Team L -->
-                    <td class="games-played">1</td> <!-- Games Played -->
-                    <td class="total-wins"></td> <!-- Total Wins (Calculated) -->
-                </tr>
-
-                <tr>
-                    <td class="rank"></td>
-                    <td class="player">Rob</td>
-                    <td class="team-f">2</td> <!-- Wins for Team F -->
-                    <td class="team-l">2</td> <!-- Wins for Team L -->
-                    <td class="games-played">8</td> <!-- Games Played -->
-                    <td class="total-wins"></td> <!-- Total Wins (Calculated) -->
-                </tr>
-
-                <tr>
-                    <td class="rank"></td>
-                    <td class="player">Roopika</td>
-                    <td class="team-f">0</td> <!-- Wins for Team F -->
-                    <td class="team-l">1</td> <!-- Wins for Team L -->
-                    <td class="games-played">1</td> <!-- Games Played -->
-                    <td class="total-wins"></td> <!-- Total Wins (Calculated) -->
-                </tr>
-
-                <tr>
-                    <td class="rank"></td>
-                    <td class="player">Sarah</td>
-                    <td class="team-f">0</td> <!-- Wins for Team F -->
-                    <td class="team-l">3</td> <!-- Wins for Team L -->
-                    <td class="games-played">7</td> <!-- Games Played -->
-                    <td class="total-wins"></td> <!-- Total Wins (Calculated) -->
-                </tr>
-
-                <tr>
-                    <td class="rank"></td>
-                    <td class="player">Villanelle</td>
-                    <td class="team-f">1</td> <!-- Wins for Team F -->
-                    <td class="team-l">2</td> <!-- Wins for Team L -->
-                    <td class="games-played">5</td> <!-- Games Played -->
-                    <td class="total-wins"></td> <!-- Total Wins (Calculated) -->
-                </tr>
-            </tbody>
-        </table>
+    
+    <div class="info-container">
+        <div class="info">
+            <table id="leaderboard">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Name</th>
+                        <th>F Wins</th>
+                        <th>L Wins</th>
+                        <th>Games Played</th>
+                        <th>Total Wins</th>
+                        <th>Win Ratio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for player in players %}
+                    <tr>
+                        <td class="rank">{{ loop.index }}</td>
+                        <td class="player">{{ player.name }}</td>
+                        <td class="team-f">{{ player.team_f_wins }}</td>
+                        <td class="team-l">{{ player.team_l_wins }}</td>
+                        <td class="games-played">{{ player.games_played }}</td>
+                        <td class="total-wins">{{ player.total_wins }}</td>
+                        <td class="win-ratio">{{ player.win_ratio }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
-
-<!-- Summary Table for Total Wins -->
-<div class="info-container">
-    <div class="info">
-        <table id="summary-table">
-            <thead>
-                <tr>
-                    <th>Total F Wins</th>
-                    <th>Total L Wins</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="team-f">4</td> <!-- Total F Wins -->
-                    <td class="team-l">4</td> <!-- Total L Wins -->
-                </tr>
-            </tbody>
-        </table>
+    
+    <!-- Summary Table for Total Wins -->
+    <div class="info-container">
+        <div class="info">
+            <table id="summary-table">
+                <thead>
+                    <tr>
+                        <th>Total F Wins</th>
+                        <th>Total L Wins</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="team-f">{{ total_f_wins }}</td>
+                        <td class="team-l">{{ total_l_wins }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
-
-<script>
-    // Function to sort table by total wins and update the total wins and games played dynamically
-    function sortLeaderboard() {
-        const table = document.getElementById('leaderboard');
-        const rows = Array.from(table.querySelectorAll('tbody tr'));
-        
-        let totalFWins = 0;
-        let totalLWins = 0;
-        
-        // Calculate and update Total Wins and Games Played for each player
-        rows.forEach(row => {
-            const teamFWins = parseInt(row.querySelector('.team-f').textContent);
-            const teamLWins = parseInt(row.querySelector('.team-l').textContent);
-            const totalWins = teamFWins + teamLWins; // Calculate total wins
-            row.querySelector('.total-wins').textContent = totalWins; // Set total wins in the table
-
-            // Accumulate total wins for Team F and Team L
-            totalFWins += teamFWins;
-            totalLWins += teamLWins;
-        });
-        
-        // Sort rows based on total wins (index 5, Total Wins column)
-        rows.sort((rowA, rowB) => {
-            const totalWinsA = parseInt(rowA.querySelector('.total-wins').textContent);
-            const totalWinsB = parseInt(rowB.querySelector('.total-wins').textContent);
-            return totalWinsB - totalWinsA; // Sort in descending order
-        });
-        
-        // Append sorted rows back to the table body
-        const tbody = table.querySelector('tbody');
-        rows.forEach(row => tbody.appendChild(row));
-        
-        // Update ranks based on the sorted order
-        rows.forEach((row, index) => {
-            row.querySelector('.rank').textContent = index + 1; // Dynamically set the rank
-        });
-    }
-
-    // Call sortLeaderboard on page load
-    window.onload = sortLeaderboard;
-</script>
 
 </body>
 </html>

@@ -371,7 +371,36 @@ def printers():
 
 @app.route('/leaderboard')
 def leaderboard():
-    return render_template('leaderboard.html')
+    # Sample leaderboard data
+    players = [
+        {'name': 'Aura', 'team_f_wins': 2, 'team_l_wins': 3, 'games_played': 7},
+        {'name': 'Ben', 'team_f_wins': 0, 'team_l_wins': 2, 'games_played': 5},
+        {'name': 'Jonathan', 'team_f_wins': 2, 'team_l_wins': 4, 'games_played': 10},
+        {'name': 'Rajitha', 'team_f_wins': 0, 'team_l_wins': 0, 'games_played': 5},
+        {'name': 'Riccardo', 'team_f_wins': 1, 'team_l_wins': 0, 'games_played': 1},
+        {'name': 'Rob', 'team_f_wins': 3, 'team_l_wins': 2, 'games_played': 10},
+        {'name': 'Roopika', 'team_f_wins': 0, 'team_l_wins': 1, 'games_played': 1},
+        {'name': 'Sarah', 'team_f_wins': 0, 'team_l_wins': 4, 'games_played': 9},
+        {'name': 'Villanelle', 'team_f_wins': 1, 'team_l_wins': 2, 'games_played': 7},
+    ]
+
+    # Calculate total wins and win ratio for each player
+    for player in players:
+        total_wins = player['team_f_wins'] + player['team_l_wins']
+        player['total_wins'] = total_wins
+        if player['games_played'] > 0:
+            player['win_ratio'] = round(total_wins / player['games_played'], 2)
+        else:
+            player['win_ratio'] = 0.0  # Handle case where no games have been played
+
+    # Sort players by win ratio in descending order
+    players.sort(key=lambda x: x['win_ratio'], reverse=True)
+
+    # Calculate total wins for F and L teams
+    total_f_wins = 5
+    total_l_wins = 5
+
+    return render_template('leaderboard.html', players=players, total_f_wins=total_f_wins, total_l_wins=total_l_wins)
 
 # Route to fetch latest news
 @app.route('/news')
