@@ -361,9 +361,10 @@ def receive_socket_data():
 def home():
     return render_template('index.html')
 
-@app.route('/temperature')
-def temperature():
-    return render_template('temperature.html')
+@app.route('/temperature/')
+@app.route('/temperature/<int:hours>')
+def temperature(hours=24):  # Default to 24 hours if not provided
+    return render_template('temperature.html', input_hours=hours)
 
 @app.route('/printers')
 def printers():
@@ -373,15 +374,17 @@ def printers():
 def leaderboard():
     # Sample leaderboard data
     players = [
-        {'name': 'Aura', 'team_f_wins': 2, 'team_l_wins': 3, 'games_played': 7},
-        {'name': 'Ben', 'team_f_wins': 0, 'team_l_wins': 2, 'games_played': 5},
-        {'name': 'Jonathan', 'team_f_wins': 2, 'team_l_wins': 4, 'games_played': 10},
+        {'name': 'Aura', 'team_f_wins': 3, 'team_l_wins': 5, 'games_played': 10},
+        {'name': 'Ben', 'team_f_wins': 0, 'team_l_wins': 3, 'games_played': 8},
+        {'name': 'Emlyn', 'team_f_wins': 0, 'team_l_wins': 1, 'games_played': 3},
+        {'name': 'Emmanuel', 'team_f_wins': 0, 'team_l_wins': 0, 'games_played': 0},
+        {'name': 'Jonathan', 'team_f_wins': 2, 'team_l_wins': 5, 'games_played': 13},
         {'name': 'Rajitha', 'team_f_wins': 0, 'team_l_wins': 0, 'games_played': 5},
         {'name': 'Riccardo', 'team_f_wins': 1, 'team_l_wins': 0, 'games_played': 1},
-        {'name': 'Rob', 'team_f_wins': 3, 'team_l_wins': 2, 'games_played': 10},
+        {'name': 'Rob', 'team_f_wins': 3, 'team_l_wins': 3, 'games_played': 13},
         {'name': 'Roopika', 'team_f_wins': 0, 'team_l_wins': 1, 'games_played': 1},
-        {'name': 'Sarah', 'team_f_wins': 0, 'team_l_wins': 4, 'games_played': 9},
-        {'name': 'Villanelle', 'team_f_wins': 1, 'team_l_wins': 2, 'games_played': 7},
+        {'name': 'Sarah', 'team_f_wins': 0, 'team_l_wins': 5, 'games_played': 11},
+        {'name': 'Villanelle', 'team_f_wins': 2, 'team_l_wins': 3, 'games_played': 10},
     ]
 
     # Calculate total wins and win ratio for each player
@@ -397,8 +400,8 @@ def leaderboard():
     players.sort(key=lambda x: x['win_ratio'], reverse=True)
 
     # Calculate total wins for F and L teams
-    total_f_wins = 5
-    total_l_wins = 5
+    total_f_wins = 6
+    total_l_wins = 7
 
     return render_template('leaderboard.html', players=players, total_f_wins=total_f_wins, total_l_wins=total_l_wins)
 

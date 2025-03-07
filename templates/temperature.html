@@ -52,7 +52,7 @@
     ], layout);
 
     // Fetch initial historical data for the last 'n' hours
-    const hours = 24;  // You can make this dynamic based on user input
+    const hours = {{ input_hours }};  // You can make this dynamic based on user input
 
     fetch(`/get_last_hours/${hours}`)
         .then(response => response.json())
