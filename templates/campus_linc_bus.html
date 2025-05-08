@@ -83,10 +83,10 @@
         <tbody>
             {% for row in northbound %}
             <tr>
-                <td class="{{ 'highlight' if row['LAC'] == next_north_time else '' }}">{{ row['LAC'] }}</td>
-                <td>{{ row['train_station'] }}</td>
-                <td>{{ row['lincoln_hotel'] }}</td>
-                <td>{{ row['lawress_hall'] }}</td>
+                <td class="{{ 'highlight' if row['LAC'] == next_north_times['LAC'] else '' }}">{{ row['LAC'] }}</td>
+                <td class="{{ 'highlight' if row['train_station'] == next_north_times['train_station'] else '' }}">{{ row['train_station'] }}</td>
+                <td class="{{ 'highlight' if row['lincoln_hotel'] == next_north_times['lincoln_hotel'] else '' }}">{{ row['lincoln_hotel'] }}</td>
+                <td class="{{ 'highlight' if row['lawress_hall'] == next_north_times['lawress_hall'] else '' }}">{{ row['lawress_hall'] }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -105,10 +105,10 @@
         <tbody>
             {% for row in southbound %}
             <tr>
-                <td class="{{ 'highlight' if row['lawress_hall'] == next_south_time else '' }}">{{ row['lawress_hall'] }}</td>
-                <td>{{ row['lincoln_hotel'] }}</td>
-                <td>{{ row['train_station'] }}</td>
-                <td>{{ row['LAC'] }}</td>
+                <td class="{{ 'highlight' if row['lawress_hall'] == next_south_times['lawress_hall'] else '' }}">{{ row['lawress_hall'] }}</td>
+                <td class="{{ 'highlight' if row['lincoln_hotel'] == next_south_times['lincoln_hotel'] else '' }}">{{ row['lincoln_hotel'] }}</td>
+                <td class="{{ 'highlight' if row['train_station'] == next_south_times['train_station'] else '' }}">{{ row['train_station'] }}</td>
+                <td class="{{ 'highlight' if row['LAC'] == next_south_times['LAC'] else '' }}">{{ row['LAC'] }}</td>
             </tr>
             {% endfor %}
         </tbody>

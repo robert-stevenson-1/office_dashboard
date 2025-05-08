@@ -1033,35 +1033,35 @@ southbound = [
 
 @app.route('/campus_linc_bus')
 def campus_linc_bus():
-    # Get current time in format HH:MM
     current_time = datetime.datetime.now().strftime('%H:%M')
 
-    # Function to find the next departure time for a given list of times
-    def get_next_departure(departures):
-        for time in departures:
-            # Ensure the time comparison is working with the correct format
+    def get_next_departure(times):
+        for time in times:
             if time > current_time:
                 return time
-        return None  # In case no times are left
+        return None
 
-    # Determine the next departure for each direction (northbound and southbound)
-    next_north_time = None
-    next_south_time = None
+    stop_keys = ['LAC', 'train_station', 'lincoln_hotel', 'lawress_hall']
 
-    north_times = [row['LAC'] for row in northbound if row['LAC']]  # Ensure non-empty
-    south_times = [row['lawress_hall'] for row in southbound if row['lawress_hall']]  # Ensure non-empty
+    # Build dictionaries of next departures for each stop
+    next_north_times = {}
+    next_south_times = {}
 
-    next_north_time = get_next_departure(north_times)
-    next_south_time = get_next_departure(south_times)
+    for key in stop_keys:
+        north_times = [row[key] for row in northbound if row[key]]
+        south_times = [row[key] for row in southbound if row[key]]
+        next_north_times[key] = get_next_departure(north_times)
+        next_south_times[key] = get_next_departure(south_times)
 
     return render_template(
         'campus_linc_bus.html',
         northbound=northbound,
         southbound=southbound,
         current_time=current_time,
-        next_north_time=next_north_time,
-        next_south_time=next_south_time
+        next_north_times=next_north_times,
+        next_south_times=next_south_times
     )
+
 
 @app.route('/campus_linc_bus_stop/<stop_name>')
 def stop_info(stop_name):
