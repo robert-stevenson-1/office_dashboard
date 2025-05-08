@@ -373,18 +373,33 @@ def printers():
 @app.route('/leaderboard')
 def leaderboard():
     # Sample leaderboard data
+    ## OLD BEFORE RESET
+    # players = [
+    #     {'name': 'Aura', 'team_f_wins': 4, 'team_l_wins': 7, 'games_played': 15, 'h_count': 0},
+    #     {'name': 'Ben', 'team_f_wins': 0, 'team_l_wins': 3, 'games_played': 8, 'h_count': 0},
+    #     {'name': 'Emlyn', 'team_f_wins': 0, 'team_l_wins': 1, 'games_played': 3, 'h_count': 0},
+    #     {'name': 'Jonathan', 'team_f_wins': 2, 'team_l_wins': 9, 'games_played': 19, 'h_count': 0},
+    #     {'name': 'Omar', 'team_f_wins': 4, 'team_l_wins': 2, 'games_played': 9, 'h_count': 1},
+    #     {'name': 'Rajitha', 'team_f_wins': 0, 'team_l_wins': 0, 'games_played': 6, 'h_count': 0},
+    #     {'name': 'Riccardo', 'team_f_wins': 1, 'team_l_wins': 0, 'games_played': 1, 'h_count': 1},
+    #     {'name': 'Rob', 'team_f_wins': 4, 'team_l_wins': 5, 'games_played': 19, 'h_count': 2},
+    #     {'name': 'Roopika', 'team_f_wins': 1, 'team_l_wins': 2, 'games_played': 6, 'h_count': 0},
+    #     {'name': 'Sarah', 'team_f_wins': 1, 'team_l_wins': 6, 'games_played': 16, 'h_count': 3},
+    #     {'name': 'Villanelle', 'team_f_wins': 2, 'team_l_wins': 3, 'games_played': 12, 'h_count': 0},
+    # ]
+    ## APRIL RESET    
     players = [
-        {'name': 'Aura', 'team_f_wins': 3, 'team_l_wins': 5, 'games_played': 10},
-        {'name': 'Ben', 'team_f_wins': 0, 'team_l_wins': 3, 'games_played': 8},
-        {'name': 'Emlyn', 'team_f_wins': 0, 'team_l_wins': 1, 'games_played': 3},
-        {'name': 'Emmanuel', 'team_f_wins': 0, 'team_l_wins': 0, 'games_played': 0},
-        {'name': 'Jonathan', 'team_f_wins': 2, 'team_l_wins': 5, 'games_played': 13},
-        {'name': 'Rajitha', 'team_f_wins': 0, 'team_l_wins': 0, 'games_played': 5},
-        {'name': 'Riccardo', 'team_f_wins': 1, 'team_l_wins': 0, 'games_played': 1},
-        {'name': 'Rob', 'team_f_wins': 3, 'team_l_wins': 3, 'games_played': 13},
-        {'name': 'Roopika', 'team_f_wins': 0, 'team_l_wins': 1, 'games_played': 1},
-        {'name': 'Sarah', 'team_f_wins': 0, 'team_l_wins': 5, 'games_played': 11},
-        {'name': 'Villanelle', 'team_f_wins': 2, 'team_l_wins': 3, 'games_played': 10},
+        {'name': 'Aura', 'team_f_wins'      : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Ben', 'team_f_wins'       : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Emlyn', 'team_f_wins'     : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Jonathan', 'team_f_wins'  : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Omar', 'team_f_wins'      : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Rajitha', 'team_f_wins'   : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Riccardo', 'team_f_wins'  : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Rob', 'team_f_wins'       : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Roopika', 'team_f_wins'   : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Sarah', 'team_f_wins'     : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Villanelle', 'team_f_wins': 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
     ]
 
     # Calculate total wins and win ratio for each player
@@ -400,8 +415,8 @@ def leaderboard():
     players.sort(key=lambda x: x['win_ratio'], reverse=True)
 
     # Calculate total wins for F and L teams
-    total_f_wins = 6
-    total_l_wins = 7
+    total_f_wins = 0    # total_f_wins = 9
+    total_l_wins = 0    # total_l_wins = 9
 
     return render_template('leaderboard.html', players=players, total_f_wins=total_f_wins, total_l_wins=total_l_wins)
 
@@ -999,7 +1014,103 @@ def heathrow_airport():
         )
     except Exception as e:
         # Handle error case, such as API failure
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 500   
+
+northbound = [
+    {"LAC": "07:30", "train_station": "07:40", "lincoln_hotel": "07:45", "lawress_hall": "07:55"},
+    {"LAC": "08:30", "train_station": "08:40", "lincoln_hotel": "08:45", "lawress_hall": "08:55"},
+    {"LAC": "13:00", "train_station": "13:10", "lincoln_hotel": "13:15", "lawress_hall": "13:25"},
+    {"LAC": "16:30", "train_station": "16:40", "lincoln_hotel": "16:45", "lawress_hall": "16:55"},
+    {"LAC": "17:30", "train_station": "17:40", "lincoln_hotel": "17:45", "lawress_hall": "17:55"}
+]
+
+southbound = [
+    {"lawress_hall": "08:05", "lincoln_hotel": "08:15", "train_station": "08:20", "LAC": "08:25"},
+    {"lawress_hall": "12:30", "lincoln_hotel": "12:40", "train_station": "12:45", "LAC": "12:55"},
+    {"lawress_hall": "16:05", "lincoln_hotel": "16:15", "train_station": "16:20", "LAC": "16:25"},
+    {"lawress_hall": "17:05", "lincoln_hotel": "17:15", "train_station": "17:20", "LAC": "17:25"}
+]
+
+@app.route('/campus_linc_bus')
+def campus_linc_bus():
+    # Get current time in format HH:MM
+    current_time = datetime.datetime.now().strftime('%H:%M')
+
+    # Function to find the next departure time for a given list of times
+    def get_next_departure(departures):
+        for time in departures:
+            # Ensure the time comparison is working with the correct format
+            if time > current_time:
+                return time
+        return None  # In case no times are left
+
+    # Determine the next departure for each direction (northbound and southbound)
+    next_north_time = None
+    next_south_time = None
+
+    north_times = [row['LAC'] for row in northbound if row['LAC']]  # Ensure non-empty
+    south_times = [row['lawress_hall'] for row in southbound if row['lawress_hall']]  # Ensure non-empty
+
+    next_north_time = get_next_departure(north_times)
+    next_south_time = get_next_departure(south_times)
+
+    return render_template(
+        'campus_linc_bus.html',
+        northbound=northbound,
+        southbound=southbound,
+        current_time=current_time,
+        next_north_time=next_north_time,
+        next_south_time=next_south_time
+    )
+
+@app.route('/campus_linc_bus_stop/<stop_name>')
+def stop_info(stop_name):
+    stop_labels = {
+        'LAC': 'LAC (UoL)',
+        'train_station': 'Train Station',
+        'lincoln_hotel': 'Lincoln Hotel',
+        'lawress_hall': 'Lawress Hall'
+    }
+
+    label = stop_labels.get(stop_name)
+    if not label:
+        return f"<h1>Unknown stop: {stop_name}</h1>", 404
+
+    # Initialize empty lists for times
+    north_times = []
+    south_times = []
+
+    # Get current time in format HH:MM
+    current_time = datetime.datetime.now().strftime('%H:%M')
+
+    # Northbound departures logic
+    if stop_name in ['LAC', 'train_station', 'lincoln_hotel']:
+        north_times = [trip[stop_name] for trip in northbound if stop_name in trip]
+
+    # Southbound departures logic
+    if stop_name in ['lawress_hall', 'train_station', 'lincoln_hotel']:
+        south_times = [trip[stop_name] for trip in southbound if stop_name in trip]
+
+    # Find the next departure time
+    def get_next_departure(times):
+        for time in times:
+            if time > current_time:
+                return time
+        return None  # In case no times are left
+
+    next_north_time = get_next_departure(north_times)
+    next_south_time = get_next_departure(south_times)
+
+    return render_template(
+        'campus_linc_bus_stop.html',
+        label=label,
+        north_times=north_times,
+        south_times=south_times,
+        current_time=current_time,
+        next_north_time=next_north_time,
+        next_south_time=next_south_time
+    )
+
 
 @app.route('/bus_map')
 def bus_map():

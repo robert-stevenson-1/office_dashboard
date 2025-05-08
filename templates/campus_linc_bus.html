@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Campus Linc Bus Timetable</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #222;
+            color: white;
+            margin: 0;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2.7em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 2.2em;
+        }
+
+        thead th {
+            background-color: #444;
+            color: #ffd700;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            border-bottom: 2px solid #ffd700;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #555;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #333;
+        }
+
+        td {
+            padding: 12px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        p {
+            text-align: center;
+            font-size: 1.5em;
+            margin-top: 40px;
+            color: #ccc;
+        }
+
+        a { 
+            color: #ffd700; 
+            text-decoration: none; 
+        }
+        
+        a:hover { 
+            text-decoration: underline; 
+        }
+
+        /* Highlight the next departure time */
+        .highlight {
+            background-color: #ffd700;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <h1>Campus Linc Bus Northbound to Riseholme</h1>
+    <table>
+        <thead>
+            <tr>
+                <th><a href="/campus_linc_bus_stop/LAC">LAC (UoL)</a></th>
+                <th><a href="/campus_linc_bus_stop/train_station">Train Station</a></th>
+                <th><a href="/campus_linc_bus_stop/lincoln_hotel">Lincoln Hotel</a></th>
+                <th><a href="/campus_linc_bus_stop/lawress_hall">Lawress Hall</a></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in northbound %}
+            <tr>
+                <td class="{{ 'highlight' if row['LAC'] == next_north_time else '' }}">{{ row['LAC'] }}</td>
+                <td>{{ row['train_station'] }}</td>
+                <td>{{ row['lincoln_hotel'] }}</td>
+                <td>{{ row['lawress_hall'] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h1>Campus Linc Bus Southbound to Brayford</h1>
+    <table>
+        <thead>
+            <tr>
+                <th><a href="/campus_linc_bus_stop/lawress_hall">Lawress Hall</a></th>
+                <th><a href="/campus_linc_bus_stop/lincoln_hotel">Lincoln Hotel</a></th>
+                <th><a href="/campus_linc_bus_stop/train_station">Train Station</a></th>
+                <th><a href="/campus_linc_bus_stop/LAC">LAC (UoL)</a></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in southbound %}
+            <tr>
+                <td class="{{ 'highlight' if row['lawress_hall'] == next_south_time else '' }}">{{ row['lawress_hall'] }}</td>
+                <td>{{ row['lincoln_hotel'] }}</td>
+                <td>{{ row['train_station'] }}</td>
+                <td>{{ row['LAC'] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
