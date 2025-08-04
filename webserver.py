@@ -2,7 +2,7 @@
 # TODO: Auto swap the log time on day change
 # TODO: Display only the current day's data in the graphs
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, url_for
 from flask_socketio import SocketIO, emit
 import threading
 import time
@@ -392,14 +392,14 @@ def leaderboard():
         {'name': 'Aura', 'team_f_wins'      : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
         {'name': 'Ben', 'team_f_wins'       : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
         {'name': 'Emlyn', 'team_f_wins'     : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
-        {'name': 'Jonathan', 'team_f_wins'  : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Jonathan', 'team_f_wins'  : 0, 'team_l_wins': 2, 'games_played': 4, 'h_count': 1},
         {'name': 'Omar', 'team_f_wins'      : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
-        {'name': 'Rajitha', 'team_f_wins'   : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Rajitha', 'team_f_wins'   : 0, 'team_l_wins': 1, 'games_played': 4, 'h_count': 0},
         {'name': 'Riccardo', 'team_f_wins'  : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
         {'name': 'Rob', 'team_f_wins'       : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
-        {'name': 'Roopika', 'team_f_wins'   : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
-        {'name': 'Sarah', 'team_f_wins'     : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
-        {'name': 'Villanelle', 'team_f_wins': 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Roopika', 'team_f_wins'   : 1, 'team_l_wins': 2, 'games_played': 4, 'h_count': 1},
+        {'name': 'Sarah', 'team_f_wins'     : 0, 'team_l_wins': 2, 'games_played': 4, 'h_count': 0},
+        {'name': 'Villanelle', 'team_f_wins': 1, 'team_l_wins': 2, 'games_played': 4, 'h_count': 2},
     ]
 
     # Calculate total wins and win ratio for each player
@@ -1218,6 +1218,23 @@ def shutdown_gracefull(signum, frame):
 # Register signal handlers for SIGINT and SIGTERM
 signal.signal(signal.SIGINT, shutdown_gracefull)
 signal.signal(signal.SIGTERM, shutdown_gracefull)
+
+@app.route('/image/<image_name>')
+def image(image_name):
+    """
+    This route handles the image display.
+
+    The primary issue in your original code was the line:
+    `image_name = image_name.get(image_name)`
+
+    The `image_name` variable is already a string containing the value from the URL.
+    You cannot call `.get()` on a string, as that method is for dictionaries.
+    This corrected code simply uses the `image_name` variable directly.
+    """
+
+    # The image exists, so render the template and pass the necessary variables.
+    image_url = url_for('static', filename=f"{image_name}.jpg")
+    return render_template('image.html', image_name=image_name, image_url=image_url)
 
 if __name__ == '__main__':
 

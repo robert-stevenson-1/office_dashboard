@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office Dashboard - {{ image_name }}</title>
+    <style>
+        /* This CSS ensures the image fills the entire browser window */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+        }
+
+        img {
+            width: 100vw;  /* Set width to 100% of the viewport width */
+            height: 100vh; /* Set height to 100% of the viewport height */
+            object-fit: contain; /* Scales the image to fit the container while maintaining its aspect ratio */
+            display: block; /* Removes any default spacing around the image */
+        }
+    </style>
+</head>
+<body>
+    
+    <img src="{{ image_url }}" alt="Image of {{ image_name }}">
+
+</body>
+</html>
