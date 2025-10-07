@@ -392,14 +392,14 @@ def leaderboard():
         {'name': 'Aura', 'team_f_wins'      : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
         {'name': 'Ben', 'team_f_wins'       : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
         {'name': 'Emlyn', 'team_f_wins'     : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
-        {'name': 'Jonathan', 'team_f_wins'  : 0, 'team_l_wins': 2, 'games_played': 4, 'h_count': 1},
+        {'name': 'Jonathan', 'team_f_wins'  : 0, 'team_l_wins': 3, 'games_played': 7, 'h_count': 1},
         {'name': 'Omar', 'team_f_wins'      : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
-        {'name': 'Rajitha', 'team_f_wins'   : 0, 'team_l_wins': 1, 'games_played': 4, 'h_count': 0},
+        {'name': 'Rajitha', 'team_f_wins'   : 0, 'team_l_wins': 2, 'games_played': 7, 'h_count': 1},
         {'name': 'Riccardo', 'team_f_wins'  : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
-        {'name': 'Rob', 'team_f_wins'       : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
+        {'name': 'Rob', 'team_f_wins'       : 2, 'team_l_wins': 1, 'games_played': 3, 'h_count': 2},
         {'name': 'Roopika', 'team_f_wins'   : 1, 'team_l_wins': 2, 'games_played': 4, 'h_count': 1},
-        {'name': 'Sarah', 'team_f_wins'     : 0, 'team_l_wins': 2, 'games_played': 4, 'h_count': 0},
-        {'name': 'Villanelle', 'team_f_wins': 1, 'team_l_wins': 2, 'games_played': 4, 'h_count': 2},
+        {'name': 'Sarah', 'team_f_wins'     : 0, 'team_l_wins': 4, 'games_played': 7, 'h_count': 0},
+        {'name': 'Villanelle', 'team_f_wins': 3, 'team_l_wins': 3, 'games_played': 7, 'h_count': 2},
     ]
 
     # Calculate total wins and win ratio for each player
