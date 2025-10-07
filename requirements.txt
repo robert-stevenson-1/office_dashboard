@@ -6,3 +6,6 @@ serial==0.0.97
 # For the make_pyplot.py
 matplotlib==3.9.2
 seaborn==0.13.2
+
+lxml
+pyttsx3
