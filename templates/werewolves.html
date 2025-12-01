@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Werewolves Leaderboard</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='duck.png') }}" sizes="32x32">
+    
+    <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        /* Background color for body */
+        body {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            font-family: 'Press Start 2P', cursive;
+            color: #ecf0f1;
+            text-align: center;
+            padding: 10px;
+            transition: background-color 0.5s ease;
+        }
+
+        /* Heading Styling */
+        h2 {
+            font-size: 3rem;
+            color: #e74c3c;
+            text-shadow: 3px 3px 6px rgba(255, 255, 255, 0.3);
+            margin-bottom: 10px;
+            margin-top: 10px;
+        }
+
+        /* Table container */
+        .info-container {
+            margin: 0 auto;
+            max-width: 1300px;
+        }
+
+        .info {
+            background-color: #34495e;
+            display: flex;
+            justify-content: center; /* Center tables horizontally */
+            overflow-x: auto; /* Allow horizontal scroll if content is too wide */
+            padding: 10px;
+        }
+
+        /* Styling for the leaderboard table */
+        table {
+            width: 100%; /* Ensure both tables have the same width */
+            max-width: 100%;
+            margin: 0 auto;
+            table-layout: fixed; /* Enable wrapping in cells */
+            border-collapse: collapse;
+            border: 3px solid #e74c3c;
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.6);
+            background-color: #34495e;
+        }
+
+        th, td {
+            font-size: 1.5rem;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #e74c3c;
+            transition: background-color 0.3s ease;
+            word-break: break-word; /* Break long words */
+            overflow-wrap: anywhere; /* Wrap long unbroken text */
+            white-space: normal; /* Allow wrapping */
+        }
+
+        /* Keep the Name column on one line with ellipsis */
+        #leaderboard th:nth-child(2),
+        #leaderboard td:nth-child(2) {
+            width: 220px;
+            max-width: 220px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        th {
+            background-color: #c0392b;
+            color: #ecf0f1;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+        }
+
+        td {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+        }
+
+        tr:nth-child(even) td {
+            background-color: #34495e;
+        }
+
+        tr:hover td {
+            background-color: #e74c3c;
+            color: #2c3e50;
+        }
+
+        /* Rank color */
+        .rank {
+            color: #f39c12;
+        }
+
+        /* Player and Team Colors */
+        .player {
+            color: #ecf0f1;
+        }
+
+        .score {
+            color: #ecf0f1;
+        }
+
+        .team {
+            font-weight: bold;
+        }
+
+        .team-villagers {
+            color: #27ae60;
+        }
+
+        .team-werewolves {
+            color: #c0392b;
+        }
+
+        /* Summary Table Styling */
+        #summary-table {
+            border: 2px solid #e74c3c;
+            background-color: #34495e;
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+        }
+
+        #summary-table th {
+            background-color: #c0392b;
+            color: #ecf0f1;
+        }
+
+        #summary-table tr:nth-child(even) td {
+            background-color: #34495e;
+        }
+
+        #summary-table tr:hover td {
+            background-color: #e74c3c;
+        }
+    </style>
+
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="info-container">
+        <div class="info">
+            <h2>Werewolves Leaderboard</h2>
+        </div>
+    </div>
+    
+    <div class="info-container">
+        <div class="info">
+            <table id="leaderboard">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Name</th>
+                        <th>Villagers Wins</th>
+                        <th>Werewolves Wins</th>
+                        <th>Games Played</th>
+                        <th>Total Wins</th>
+                        <th>Win Ratio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for player in players %}
+                    <tr>
+                        <td class="rank">{{ loop.index }}</td>
+                        <td class="player" title="{{ player.name }}">{{ player.name }}</td>
+                        <td class="team-villagers">{{ player.villagers_wins }}</td>
+                        <td class="team-werewolves">{{ player.werewolves_wins }}</td>
+                        <td class="games-played">{{ player.games_played }}</td>
+                        <td class="total-wins">{{ player.total_wins }}</td>
+                        <td class="win-ratio">{{ player.win_ratio }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Summary Table for Total Wins -->
+    <div class="info-container">
+        <div class="info">
+            <table id="summary-table">
+                <thead>
+                    <tr>
+                        <th>Total Villagers Wins</th>
+                        <th>Total Werewolves Wins</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="team-villagers">{{ total_villagers_wins }}</td>
+                        <td class="team-werewolves">{{ total_werewolves_wins }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</body>
+</html>

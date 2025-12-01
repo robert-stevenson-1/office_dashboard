@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lincoln Pub Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        /* 1. Page Body & Font */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8f9fa; /* Light grey background */
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* 2. Main Container */
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        /* 3. Page Title */
+        h1 {
+            color: #222;
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
+        /* 4. Map Styling */
+        #map_pub {
+            height: 600px;
+            width: 100%;
+            border-radius: 8px; /* Rounded corners for the map */
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+        }
+
+        /* 5. Custom Tooltip Styling */
+        .pub_map_tooltip {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #aaa;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            font-weight: bold;
+            padding: 6px 10px;
+            color: #333;
+            /* Hides the default ugly triangle */
+            border-arrow: none; 
+        }
+        .pub_map_tooltip.leaflet-tooltip-top:before {
+            border: none;
+        }
+
+        /* 6. Custom Popup Styling */
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+        .leaflet-popup-content {
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 15px 20px 15px 15px; /* More space */
+        }
+        .leaflet-popup-content strong {
+            font-size: 17px;
+            color: #005a9c; /* A nice blue for the title */
+            display: block;
+            margin-bottom: 5px;
+        }
+        .leaflet-popup-content em {
+            color: #555;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🍻 Lincoln Pub Map 🍻</h1>
+        <div id="map_pub"></div>
+    </div>
+
+    <script>
+        // Initialize map
+        const map = L.map('map_pub').setView([53.23145935316048, -0.5394907866106213], 15);
+
+        // --- UPDATED TILE LAYER ---
+        // Using a cleaner, more modern map background from CartoDB
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        }).addTo(map);
+
+        // Custom pub icon
+        const pubIcon = L.icon({
+            iconUrl: '{{ url_for("static", filename="beer_icon.png") }}',
+            iconSize: [30, 30],
+            iconAnchor: [15, 30],
+            popupAnchor: [0, -25]
+        });
+
+        // Fetch and show pub data
+        function updateMap() {
+            fetch('/pub_data')
+                .then(res => res.json())
+                .then(data => {
+                    L.geoJSON(data, {
+                        pointToLayer: function (feature, latlng) {
+                            const marker = L.marker(latlng, { icon: pubIcon });
+                            
+                            // Bind tooltip to show on hover
+                            marker.bindTooltip(`${feature.properties.name}`, {
+                                permanent: false, // Only shows on hover
+                                direction: 'top',   // Position the tooltip above the marker
+                                offset: [0, -30],   // Move tooltip 30 pixels above the marker's anchor
+                                className: 'pub_map_tooltip' // Custom class for styling
+                            });
+                            
+                            return marker;
+                        },
+                        onEachFeature: (feature, layer) => {
+                            const props = feature.properties;
+                            layer.bindPopup(`
+                                <strong>${props.name}</strong>
+                                🍻 <strong>Beer Price:</strong> ${props.beer_price}<br>
+                                📍 <em>${props.address}</em><br>
+                                ⭐ <strong>Rating:</strong> ${props.rating}
+                            `);
+                        }
+                    }).addTo(map);
+                })
+                .catch(err => console.error('Error loading pub data:', err));
+        }
+
+        updateMap();
+    </script>
+</body>
+</html>

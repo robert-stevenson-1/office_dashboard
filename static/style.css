@@ -323,6 +323,19 @@ footer {
     padding: 0px 0px 0px 0px;
 }
 
+#map_pub {
+    height: 80%; /* 80% of the parent container height */
+    width: 100%; /* Full width */
+    min-height: 300px; /* Minimum height for usability */
+    max-height: 600px; /* Optional max height */
+}
+
+.pub_map_container {
+    background-color: #014785;
+    color: white;
+    padding: 0px 0px 0px 0px;
+}
+
 
 
 

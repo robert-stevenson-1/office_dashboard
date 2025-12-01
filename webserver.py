@@ -373,52 +373,103 @@ def printers():
 @app.route('/leaderboard')
 def leaderboard():
     # Sample leaderboard data
-    ## OLD BEFORE RESET
-    # players = [
-    #     {'name': 'Aura', 'team_f_wins': 4, 'team_l_wins': 7, 'games_played': 15, 'h_count': 0},
-    #     {'name': 'Ben', 'team_f_wins': 0, 'team_l_wins': 3, 'games_played': 8, 'h_count': 0},
-    #     {'name': 'Emlyn', 'team_f_wins': 0, 'team_l_wins': 1, 'games_played': 3, 'h_count': 0},
-    #     {'name': 'Jonathan', 'team_f_wins': 2, 'team_l_wins': 9, 'games_played': 19, 'h_count': 0},
-    #     {'name': 'Omar', 'team_f_wins': 4, 'team_l_wins': 2, 'games_played': 9, 'h_count': 1},
-    #     {'name': 'Rajitha', 'team_f_wins': 0, 'team_l_wins': 0, 'games_played': 6, 'h_count': 0},
-    #     {'name': 'Riccardo', 'team_f_wins': 1, 'team_l_wins': 0, 'games_played': 1, 'h_count': 1},
-    #     {'name': 'Rob', 'team_f_wins': 4, 'team_l_wins': 5, 'games_played': 19, 'h_count': 2},
-    #     {'name': 'Roopika', 'team_f_wins': 1, 'team_l_wins': 2, 'games_played': 6, 'h_count': 0},
-    #     {'name': 'Sarah', 'team_f_wins': 1, 'team_l_wins': 6, 'games_played': 16, 'h_count': 3},
-    #     {'name': 'Villanelle', 'team_f_wins': 2, 'team_l_wins': 3, 'games_played': 12, 'h_count': 0},
-    # ]
-    ## APRIL RESET    
-    players = [
-        {'name': 'Aura', 'team_f_wins'      : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
-        {'name': 'Ben', 'team_f_wins'       : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
-        {'name': 'Emlyn', 'team_f_wins'     : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
-        {'name': 'Jonathan', 'team_f_wins'  : 0, 'team_l_wins': 3, 'games_played': 7, 'h_count': 1},
-        {'name': 'Omar', 'team_f_wins'      : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
-        {'name': 'Rajitha', 'team_f_wins'   : 0, 'team_l_wins': 2, 'games_played': 7, 'h_count': 1},
-        {'name': 'Riccardo', 'team_f_wins'  : 0, 'team_l_wins': 0, 'games_played': 0, 'h_count': 0},
-        {'name': 'Rob', 'team_f_wins'       : 2, 'team_l_wins': 1, 'games_played': 3, 'h_count': 2},
-        {'name': 'Roopika', 'team_f_wins'   : 1, 'team_l_wins': 2, 'games_played': 4, 'h_count': 1},
-        {'name': 'Sarah', 'team_f_wins'     : 0, 'team_l_wins': 4, 'games_played': 7, 'h_count': 0},
-        {'name': 'Villanelle', 'team_f_wins': 3, 'team_l_wins': 3, 'games_played': 7, 'h_count': 2},
-    ]
+    # Load sh games from JSON and aggregate
+    def aggregate_sh_stats(game_records):
+        stats = {}
+        total_liberal_wins = 0
+        total_fascist_wins = 0
 
-    # Calculate total wins and win ratio for each player
-    for player in players:
-        total_wins = player['team_f_wins'] + player['team_l_wins']
-        player['total_wins'] = total_wins
-        if player['games_played'] > 0:
-            player['win_ratio'] = round(total_wins / player['games_played'], 2)
-        else:
-            player['win_ratio'] = 0.0  # Handle case where no games have been played
+        for game in game_records:
+            winner = game.get('winner')
+            if winner == 'liberal':
+                total_liberal_wins += 1
+            elif winner == 'fascist':
+                total_fascist_wins += 1
 
-    # Sort players by win ratio in descending order
-    players.sort(key=lambda x: x['win_ratio'], reverse=True)
+            for p in game.get('players', []):
+                name = p.get('name')
+                role = p.get('role')
+                if not name:
+                    continue
+                s = stats.setdefault(name, {
+                    'name': name,
+                    'team_f_wins': 0,
+                    'team_l_wins': 0,
+                    'games_played': 0,
+                    'h_count': 0,
+                })
+                s['games_played'] += 1
+                if role == 'hitler':
+                    s['h_count'] += 1
+                # Credit wins only to players on the winning team
+                if winner == 'liberal' and role == 'liberal':
+                    s['team_l_wins'] += 1
+                elif winner == 'fascist' and (role == 'fascist' or role == 'hitler'):
+                    s['team_f_wins'] += 1
 
-    # Calculate total wins for F and L teams
-    total_f_wins = 0    # total_f_wins = 9
-    total_l_wins = 0    # total_l_wins = 9
-
+        players = list(stats.values())
+        for player in players:
+            total_wins = player['team_f_wins'] + player['team_l_wins']
+            player['total_wins'] = total_wins
+            player['win_ratio'] = round(total_wins / player['games_played'], 2) if player['games_played'] else 0.0
+        players.sort(key=lambda x: x['win_ratio'], reverse=True)
+        return players, total_liberal_wins, total_fascist_wins
+    try:
+        with open('config/games_sh.json', 'r') as f:
+            games = json.load(f)
+    except Exception:
+        games = []
+    players, total_l_wins, total_f_wins = aggregate_sh_stats(games)
     return render_template('leaderboard.html', players=players, total_f_wins=total_f_wins, total_l_wins=total_l_wins)
+
+@app.route('/werewolves')
+def werewolves():
+    # Aggregate werewolves stats from JSON
+    def aggregate_werewolves_stats(game_records):
+        stats = {}
+        total_villagers_wins = 0
+        total_werewolves_wins = 0
+
+        for game in game_records:
+            winner = game.get('winner')
+            if winner == 'villagers':
+                total_villagers_wins += 1
+            elif winner == 'werewolves':
+                total_werewolves_wins += 1
+
+            for p in game.get('players', []):
+                name = p.get('name')
+                role = p.get('role')
+                if not name:
+                    continue
+                s = stats.setdefault(name, {
+                    'name': name,
+                    'villagers_wins': 0,
+                    'werewolves_wins': 0,
+                    'games_played': 0,
+                })
+                s['games_played'] += 1
+                # Credit wins only to players on the winning team
+                if winner == 'villagers' and role != 'werewolf':
+                    s['villagers_wins'] += 1
+                elif winner == 'werewolves' and role == 'werewolf':
+                    s['werewolves_wins'] += 1
+
+        players = list(stats.values())
+        for player in players:
+            total_wins = player['villagers_wins'] + player['werewolves_wins']
+            player['total_wins'] = total_wins
+            player['win_ratio'] = round(total_wins / player['games_played'], 2) if player['games_played'] else 0.0
+        players.sort(key=lambda x: x['win_ratio'], reverse=True)
+        return players, total_villagers_wins, total_werewolves_wins
+
+    try:
+        with open('config/games_werewolves.json', 'r') as f:
+            games = json.load(f)
+    except Exception:
+        games = []
+    players, total_v_wins, total_w_wins = aggregate_werewolves_stats(games)
+    return render_template('werewolves.html', players=players, total_villagers_wins=total_v_wins, total_werewolves_wins=total_w_wins)
 
 # Route to fetch latest news
 @app.route('/news')
@@ -1016,19 +1067,166 @@ def heathrow_airport():
         # Handle error case, such as API failure
         return jsonify({"error": str(e)}), 500   
 
+@app.route('/pub_map')
+def pub_map():
+    return render_template('pub_map.html')
+
+@app.route('/pub_data')
+def get_pub_data():
+    pub_data = {
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-0.5394907866106213, 53.23145935316048]},
+            "properties": {
+                "name": "The Cardinal's Hat",
+                "beer_price": "£5.20/pint",
+                "address": "268 High St, Lincoln, LN2 1HW",
+                "rating": "4.6"
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-0.5392706990080802, 53.231695709368324]},
+            "properties": {
+                "name": "The Strait and Narrow",
+                "beer_price": "£5.00/pint",
+                "address": "29-31 The Strait, Lincoln, LN2 1JD",
+                "rating": "4.7"
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-0.537778, 53.228222]},
+            "properties": {
+                "name": "The Witch and Wardrobe",
+                "beer_price": "£4.80/pint",
+                "address": "21 Waterside North, Lincoln, LN2 5DQ",
+                "rating": "4.4"
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-0.5384, 53.2355]},
+            "properties": {
+                "name": "The Lion & Snake",
+                "beer_price": "£4.90/pint",
+                "address": "79 Bailgate, Lincoln, LN1 3AR",
+                "rating": "4.5"
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-0.542222, 53.23575]},
+            "properties": {
+                "name": "The Victoria",
+                "beer_price": "£5.10/pint",
+                "address": "6 Union Road, Lincoln, LN1 3BJ",
+                "rating": "4.6"
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-0.54, 53.23]},
+            "properties": {
+                "name": "The Joiners Arms",
+                "beer_price": "£4.75/pint",
+                "address": "Victoria Street, West Parade, Lincoln, LN1 1HU",
+                "rating": "4.3"
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-0.5323, 53.2332]},
+            "properties": {
+                "name": "Adam & Eve Tavern",
+                "beer_price": "£4.75/pint",
+                "address": "25 Lindum Road, Lincoln, LN2 1NT",
+                "rating": "3.9"
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-0.5413278890089913, 53.22924015289449]},
+            "properties": {
+                "name": "The William Foster",
+                "beer_price": "£4.75/pint",
+                "address": "Guildhall Street, Lincoln, LN1 1TT",
+                "rating": "4.2"
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-0.542444, 53.236225]},
+            "properties": {
+                "name": "The Strugglers Inn",
+                "beer_price": "£4.75/pint",
+                "address": "83 Westgate, Lincoln, LN1 3BG",
+                "rating": "4.1"
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-0.53, 53.23]},
+            "properties": {
+                "name": "The Dog & Bone",
+                "beer_price": "£4.75/pint",
+                "address": "10 John Street, Lincoln, LN2 5BH",
+                "rating": "3.9"
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-0.5318792148230017, 53.235282636627225]},
+            "properties": {
+                "name": "The Morning Star",
+                "beer_price": "£4.75/pint",
+                "address": "11 Greetwell Gate, Lincoln, LN2 4AW",
+                "rating": "3.8"
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-0.5487, 53.2283]},
+            "properties": {
+                "name": "The Swan",
+                "beer_price": "£3.75/pint",
+                "address": "Campus Way, University of Lincoln, Lincoln, LN6 7TS",
+                "rating": "4.8"
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-0.5453, 53.2272]},
+            "properties": {
+                "name": "Tower Bar",
+                "beer_price": "£3.75/pint",
+                "address": "Engine Shed, University of Lincoln, Lincoln, LN6 7TS",
+                "rating": "4.9"
+
+            }
+        }
+    ]
+}
+
+    return jsonify(pub_data)
+
+
 northbound = [
     {"LAC": "07:30", "train_station": "07:40", "lincoln_hotel": "07:45", "lawress_hall": "07:55"},
     {"LAC": "08:30", "train_station": "08:40", "lincoln_hotel": "08:45", "lawress_hall": "08:55"},
     {"LAC": "13:00", "train_station": "13:10", "lincoln_hotel": "13:15", "lawress_hall": "13:25"},
     {"LAC": "16:30", "train_station": "16:40", "lincoln_hotel": "16:45", "lawress_hall": "16:55"},
-    {"LAC": "17:30", "train_station": "17:40", "lincoln_hotel": "17:45", "lawress_hall": "17:55"}
+    {"LAC": "17:40", "train_station": "17:50", "lincoln_hotel": "17:55", "lawress_hall": "18:05"}
 ]
 
 southbound = [
     {"lawress_hall": "08:05", "lincoln_hotel": "08:15", "train_station": "08:20", "LAC": "08:25"},
     {"lawress_hall": "12:30", "lincoln_hotel": "12:40", "train_station": "12:45", "LAC": "12:55"},
-    {"lawress_hall": "16:05", "lincoln_hotel": "16:15", "train_station": "16:20", "LAC": "16:25"},
-    {"lawress_hall": "17:05", "lincoln_hotel": "17:15", "train_station": "17:20", "LAC": "17:25"}
+    {"lawress_hall": "13:30", "lincoln_hotel": "13:40", "train_station": "13:45", "LAC": "13:55"},
+    {"lawress_hall": "16:15", "lincoln_hotel": "16:20", "train_station": "16:30", "LAC": "16:35"},
+    {"lawress_hall": "17:15", "lincoln_hotel": "17:25", "train_station": "17:30", "LAC": "17:35"}
 ]
 
 @app.route('/campus_linc_bus')
