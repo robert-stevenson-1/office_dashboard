@@ -74,10 +74,11 @@
     // Initialize Plotly chart for temperature and humidity on the same graph
     const layout = {
         title: 'Temperature and Humidity',
+        showlegend: false,
         xaxis: { title: 'Time' },
-        yaxis: { title: 'Temperature (°C)', side: 'left' },
-        yaxis2: { title: 'Humidity (%)', side: 'right', overlaying: 'y', showgrid: false },
-        margin: { t: 50, r: 30, l: 50, b: 50 }
+        yaxis: { title: { text: 'Temperature (°C)', font: { color: 'red' } }, side: 'left' },
+        yaxis2: { title: { text: 'Humidity (%)', font: { color: 'blue' } }, side: 'right', overlaying: 'y', showgrid: false },
+        margin: { t: 50, r: 50, l: 50, b: 50 }
     };
 
     // Initial Plot for temperature and humidity
