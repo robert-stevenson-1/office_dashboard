@@ -37,7 +37,9 @@
         /* Table container */
         .info-container {
             margin: 0 auto;
-            max-width: 1300px;
+            /* make the leaderboard wider on large screens */
+            max-width: 1600px;
+            padding: 0 10px; /* give a little breathing room on very wide screens */
         }
 
         .info {
@@ -50,8 +52,9 @@
 
         /* Styling for the leaderboard table */
         table {
-            width: 100%; /* Ensure both tables have the same width */
-            max-width: 100%;
+            width: 100%; /* table stretches to container width */
+            /* give the leaderboard a comfortable max width on large displays */
+            max-width: 1500px;
             margin: 0 auto;
             table-layout: fixed; /* Enable wrapping in cells */
             border-collapse: collapse;
@@ -166,8 +169,8 @@
                     <tr>
                         <th>Rank</th>
                         <th>Name</th>
-                        <th>Villagers Wins</th>
-                        <th>Werewolves Wins</th>
+                        <th>V Wins</th>
+                        <th>W Wins</th>
                         <th>Games Played</th>
                         <th>Total Wins</th>
                         <th>Win Ratio</th>

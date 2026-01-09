@@ -13,6 +13,14 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        body, html {
+            padding-bottom: 0;
+            padding-top: 0;
+
+        }
+    </style>
 </head>
 <body>
 
@@ -35,6 +43,33 @@
 
 <script>
     const socket = io();
+
+    // Parse various timestamp formats into epoch milliseconds
+    function parseTimestamp(ts) {
+        if (ts === null || ts === undefined) return null;
+        if (typeof ts === 'number') {
+            // If seconds (e.g. 1620000000) convert to ms
+            if (ts < 1e12) return ts * 1000;
+            return ts;
+        }
+        const parsed = Date.parse(ts);
+        return isNaN(parsed) ? null : parsed;
+    }
+
+    function computeAverageForMinutes(timestamps, temps, minutes) {
+        if (!timestamps || !temps || timestamps.length === 0) return NaN;
+        const now = Date.now();
+        const cutoff = now - minutes * 60 * 1000;
+        let sum = 0, count = 0;
+        for (let i = timestamps.length - 1; i >= 0; i--) {
+            const t = parseTimestamp(timestamps[i]);
+            if (t === null) continue;
+            if (t < cutoff) break; // timestamps assumed ordered ascending
+            const val = Number(temps[i]);
+            if (!isNaN(val)) { sum += val; count++; }
+        }
+        return count ? sum / count : NaN;
+    }
 
     // Initialize Plotly chart for temperature and humidity on the same graph
     const layout = {
@@ -68,6 +103,12 @@
             Plotly.restyle('combinedChart', 'x', [tempX]);
             Plotly.restyle('combinedChart', 'y', [tempY], 0);  // Update first y-axis for temperature
             Plotly.restyle('combinedChart', 'y', [humY], 1);   // Update second y-axis for humidity
+
+            // Compute and set averages for last 5 minutes and last 5 days
+            const avg5min = computeAverageForMinutes(tempX, tempY, 5);
+            const avg5days = computeAverageForMinutes(tempX, tempY, 5 * 24 * 60);
+            document.getElementById('averageTemperature5Min').innerText = isNaN(avg5min) ? '--' : avg5min.toFixed(2);
+            document.getElementById('averageTemperature5Days').innerText = isNaN(avg5days) ? '--' : avg5days.toFixed(2);
         });
 
     // Listen for new data in real time and update the chart
@@ -77,10 +118,31 @@
         Plotly.extendTraces('combinedChart', { x: [[data.time]], y: [[data.humidity]] }, [1]);
 
         // Update the current temperature and averages displayed
-        // document.getElementById('currentTemperature').innerText = data.current_temperature.toFixed(2);
-        document.getElementById('currentTemperature').innerText = data.temperature_data[data.temperature_data.length - 1].toFixed(2);
-        document.getElementById('averageTemperature5Min').innerText = data.average_temperature_5min.toFixed(2);
-        document.getElementById('averageTemperature5Days').innerText = data.average_temperature_5days.toFixed(2);
+        // Update current temperature (guard for missing values)
+        const currentTempElem = document.getElementById('currentTemperature');
+        if (typeof data.temperature === 'number' && !isNaN(data.temperature)) {
+            currentTempElem.innerText = data.temperature.toFixed(2);
+        } else {
+            currentTempElem.innerText = '--';
+        }
+
+        // Compute averages from chart data as a fallback if server doesn't send them
+        const chartEl = document.getElementById('combinedChart');
+        const chartTimesRaw = (chartEl && chartEl.data && chartEl.data[0] && chartEl.data[0].x) ? chartEl.data[0].x : [];
+        const chartTempsRaw = (chartEl && chartEl.data && chartEl.data[0] && chartEl.data[0].y) ? chartEl.data[0].y : [];
+        // Flatten Plotly nested arrays if necessary
+        const chartTimes = (Array.isArray(chartTimesRaw) && Array.isArray(chartTimesRaw[0]) && chartTimesRaw.length === 1) ? chartTimesRaw[0] : chartTimesRaw;
+        const chartTemps = (Array.isArray(chartTempsRaw) && Array.isArray(chartTempsRaw[0]) && chartTempsRaw.length === 1) ? chartTempsRaw[0] : chartTempsRaw;
+
+        const avg5minSocket = (data.average_temperature_5min !== undefined && !isNaN(Number(data.average_temperature_5min)))
+            ? Number(data.average_temperature_5min)
+            : computeAverageForMinutes(chartTimes, chartTemps, 5);
+        const avg5daysSocket = (data.average_temperature_5days !== undefined && !isNaN(Number(data.average_temperature_5days)))
+            ? Number(data.average_temperature_5days)
+            : computeAverageForMinutes(chartTimes, chartTemps, 5 * 24 * 60);
+
+        document.getElementById('averageTemperature5Min').innerText = isNaN(avg5minSocket) ? '--' : avg5minSocket.toFixed(2);
+        document.getElementById('averageTemperature5Days').innerText = isNaN(avg5daysSocket) ? '--' : avg5daysSocket.toFixed(2);
     });
 
     const maxPoints = 60; // Adjust this based on your requirement

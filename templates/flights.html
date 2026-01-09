@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Classic Airport Departure Board</title>
+  <title>Airport Departure Board - Humberside</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='duck.png') }}" sizes="32x32">
   <style>
     * {
       margin: 0;
@@ -15,169 +16,441 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      background-color: #222;
-      color: #ffcc00;
-      font-family: monospace;
-      font-size: 1.5vw;
+      /* deep midnight navy */
+      background: #0B0C15;
+      font-family: 'Courier New', 'Lucida Console', 'Roboto Mono', monospace;
       height: 100vh;
       width: 100vw;
       overflow: hidden;
+      padding: 0;
+      margin: 0;
+      color: rgb(255,200,80);
     }
 
     .departure-board {
-      background-color: #333;
-      width: 90vw;
-      height: 90vh;
+      background: transparent;
+      width: 100vw;
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      border-radius: 10px;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     }
 
-    .board-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 1.5vh 0;
-      border-bottom: 1px solid #444;
-      height: 8vh;
-      align-items: center;
-    }
-
-    .board-row:last-child {
-      border-bottom: none;
-    }
-
-    .column {
-      width: 20%;
-      text-align: center;
+    .board-wrapper {
       display: flex;
       justify-content: center;
+      align-items: center;
+      height: 100vh;
+      width: 100vw;
     }
 
-    .split-flap {
-      display: inline-block;
-      perspective: 1000px;
-      overflow: hidden;
+    .board {
+      --board-width: 100vw; /* full-bleed */
+      width: 100vw;
+      height: 100vh; /* fill the entire viewport */
+      background: linear-gradient(180deg, #1b1b1b 0%, #0f0f10 100%);
+      border-radius: 0; /* full page board */
+      box-shadow: 0 20px 80px rgba(0,0,0,0.75), inset 0 2px 0 rgba(255,255,255,0.02);
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
       position: relative;
-      height: 1.5em;
-      width: 1em;
-      line-height: 1em;
-      color: #ffcc00;
+      padding: 6px 0 6px 0; /* minimal inner padding */
+      margin: 0; /* flush to edges */
     }
 
-    .flap-inner {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      background: #222;
-      color: #ffcc00;
-      transition: transform 0.5s ease-in-out;
-      display: flex;
-      justify-content: center;
+    /* top header and column labels removed — board is tiles only */
+
+    .column-headers {
+      display: grid;
+      /* removed the gate column - now: FLIGHT | DESTINATION | TIME | STATUS */
+      grid-template-columns: 10vw 1fr 9vw 16vw;
+      gap: 0.6vw;
+      padding: 0.45vh 0.6vw;
+      font-size: 1.2vh;
+      color: rgba(255,200,80,0.95);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
       align-items: center;
-      font-size: 1.5em;
     }
 
-    /* Front face of the letter */
-    .flap-front {
-      transform-origin: top;
-      transform: rotateX(0deg);
+    .flights-container {
+      flex: 1;
+      overflow: hidden; /* disable scrolling - board must fit the viewport */
+      background: transparent;
+      display: grid;
+      /* create a fixed number of rows so the board looks like the reference */
+      grid-auto-rows: 1fr;
+      gap: 0; /* rows touching - no vertical gaps */
+      padding: 0; /* no internal left/right padding — board uses full viewport */
+      align-content: space-evenly;
     }
 
-    /* Back face of the letter */
-    .flap-back {
-      transform-origin: bottom;
-      transform: rotateX(90deg);
+    .flight-row {
+      display: grid;
+      /* FLIGHT | DESTINATION | TIME | STATUS (gate removed) */
+      grid-template-columns: 10vw 1fr 9vw 16vw;
+      gap: 0.6vw;
+      padding: 0; /* no extra vertical spacing so rows sit flush */
+      align-items: center;
+      width: 100%;
+      white-space: nowrap;
     }
 
-    .flip .flap-front {
-      transform: rotateX(-90deg);
+    /* ensure each column clips cleanly and prevents overlapping/bunching */
+    .flight-row {
+      overflow: hidden;
     }
 
-    .flip .flap-back {
-      transform: rotateX(0deg);
+    .flip-display {
+      display: inline-flex;
+      gap: 0.12em;
+      justify-content: flex-start;
+      flex-wrap: nowrap;
+      align-items: center;
+      overflow: hidden;
     }
 
-    /* Header Row Style */
-    .header-row {
-      font-weight: bold;
-      color: #ffcc00;
-      border-bottom: 2px solid #ffcc00;
-      height: 8vh;
+    /* ensure columns align as expected - use classes for explicit control */
+    .flight-row > .flip-display { justify-self: start; }
+    .flight-row > .flip-display.col-status { justify-self: end; }
+    .flip-display.col-status { justify-content: flex-end; }
+    /* gate column removed */
+
+    .flip-char {
+      background: linear-gradient(180deg, rgba(6,6,6,0.94) 0%, rgba(10,10,10,0.98) 50%, rgba(6,6,6,0.96) 100%);
+      color: rgb(255,200,80);
+      width: calc(1.4vh + 1.05rem);
+      height: calc(3.1vh + 1.05rem);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 3px;
+      font-size: 3.6vh;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      box-shadow:
+        inset 0 -6px 12px rgba(0,0,0,0.6),
+        inset 0 6px 12px rgba(255,255,255,0.02),
+        0 2px 6px rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.03);
+      position: relative;
+      overflow: hidden;
+      text-shadow: 0 0 8px rgba(255,200,80,0.12);
+      transform-style: preserve-3d;
+      perspective: 500px;
+      margin: 0 0.04em;
     }
+
+    .flip-char.space {
+      /* same size and border as a normal tile, but empty (transparent character) */
+      background: linear-gradient(180deg, rgba(6,6,6,0.94) 0%, rgba(10,10,10,0.98) 50%, rgba(6,6,6,0.96) 100%);
+      color: transparent;
+      box-shadow:
+        inset 0 -6px 12px rgba(0,0,0,0.6),
+        inset 0 6px 12px rgba(255,255,255,0.02),
+        0 2px 6px rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.03);
+      width: calc(1.4vh + 1.05rem);
+      height: calc(3.1vh + 1.05rem);
+      margin: 0 0.04em;
+    }
+
+    .separator {
+      color: rgb(255,200,80);
+      font-size: 3.7vh;
+      margin: 0 0.6vw;
+      opacity: 0.66;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.8rem;
+    }
+
+    .col-time { justify-items: start; }
+    .col-destination { justify-items: start; }
+    .col-flight { justify-items: start; }
+    .col-airline { justify-items: start; }
+    .col-status { justify-items: end; }
+
+    /* make each char tile non-shrink so letters keep their visual spacing */
+    .flip-display .flip-char { flex: 0 0 auto; }
+
+    .flip-char::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 50%;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.02), rgba(0,0,0,0));
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .flip-char::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 50%;
+      background: linear-gradient(to top, rgba(0,0,0,0.45), rgba(0,0,0,0));
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .flip-char .char-content {
+      position: relative;
+      display: block;
+      transform-style: preserve-3d;
+      animation: flip 0.8s cubic-bezier(0.455, 0.030, 0.515, 0.955);
+      z-index: 2;
+      line-height: 1;
+    }
+
+    @keyframes flip {
+      0% {
+        transform: rotateX(0deg);
+      }
+      50% {
+        transform: rotateX(-90deg);
+        opacity: 0.3;
+      }
+      100% {
+        transform: rotateX(0deg);
+      }
+    }
+
+    .status-on-time {
+      color: #06ffa5;
+      text-shadow: 0 0 10px rgba(6, 255, 165, 0.5);
+    }
+
+    .status-delayed {
+      color: #ff9f1c;
+      text-shadow: 0 0 10px rgba(255, 159, 28, 0.5);
+      animation: pulse 2s infinite;
+    }
+
+    .status-cancelled {
+      color: #f71735;
+      text-shadow: 0 0 10px rgba(247, 23, 53, 0.5);
+    }
+
+    .status-boarding {
+      color: #4ecdc4;
+      text-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .airline-logo {
+      max-width: 18vw;
+      max-height: 8vh;
+      object-fit: contain;
+    }
+
+    ::-webkit-scrollbar {
+      width: 12px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0B0C15;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #ff9f1c;
+      border-radius: 4px;
+    }
+
+    .flip-char .char-content::after {
+      content: '';
+      position: absolute;
+      left: 4%;
+      right: 4%;
+      height: 1px;
+      top: 50%;
+      background: rgba(0,0,0,0.6);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.02);
+      z-index: 3;
+    }
+
+    .loading {
+      color: rgb(255,200,80);
+      text-align: center;
+      padding: 5vh;
+      font-size: 3.2vh;
+    }
+
+    /* bottom-bar removed for full-bleed layout */
   </style>
 </head>
 <body>
 
-<div class="departure-board">
-  <!-- Header row -->
-  <div class="board-row header-row">
-    <div class="column">TIME</div>
-    <div class="column">DESTINATION</div>
-    <div class="column">FLIGHT</div>
-    <div class="column">AIRLINE</div>
-    <div class="column">STATUS</div>
-  </div>
-  
-  <!-- Example rows with split-flap effect -->
-  <div class="board-row">
-    <div class="column" id="time1"></div>
-    <div class="column" id="destination1"></div>
-    <div class="column" id="flight1"></div>
-    <div class="column" id="airline1"></div>
-    <div class="column" id="status1"></div>
+<div class="board-wrapper">
+  <div class="board">
+    <!-- header and column labels removed - full-tile board -->
+
+    <div class="column-headers" aria-hidden="true">
+      <div class="col-h flight">FLIGHT</div>
+      <div class="col-h destination">DESTINATION</div>
+      <div class="col-h time">TIME</div>
+      <div class="col-h status">STATUS</div>
+    </div>
+
+    <div class="flights-container" id="flightsContainer">
+      <div class="loading">Loading departures...</div>
+    </div>
   </div>
 </div>
 
-<script>
-  // Data samples
-  const destinations = ["New York", "London", "Paris", "Tokyo", "Dubai"];
-  const airlines = ["American", "British Airways", "Air France", "Japan Airlines", "Emirates"];
-  const statuses = ["On Time", "Delayed", "Boarding", "Cancelled"];
   
-  function createSplitFlapText(elementId, text) {
-    const container = document.getElementById(elementId);
-    container.innerHTML = ''; // Clear existing content
 
-    for (let char of text) {
-      const flap = document.createElement('div');
-      flap.className = 'split-flap';
-
-      const flapFront = document.createElement('div');
-      flapFront.className = 'flap-inner flap-front';
-      flapFront.textContent = char;
-
-      const flapBack = document.createElement('div');
-      flapBack.className = 'flap-inner flap-back';
-      flapBack.textContent = char;
-
-      flap.appendChild(flapFront);
-      flap.appendChild(flapBack);
-      container.appendChild(flap);
-
-      // Apply flip animation with random delay
-      setTimeout(() => flap.classList.add('flip'), Math.random() * 1000);
+<script>
+  function createFlipDisplay(text, maxChars) {
+    // Show a single blank flip tile when text is empty/null (keeps grid visible)
+    if (!text) {
+      // if maxChars is provided show a single blank tile; otherwise a single blank tile
+      return `<span class="flip-char space"><span class="char-content"> </span></span>`;
     }
+
+    let s = text.toString().toUpperCase();
+    if (typeof maxChars === 'number' && maxChars > 0 && s.length > maxChars) {
+      // leave 3 chars for the ellipsis
+      const shown = s.slice(0, Math.max(0, maxChars - 3));
+      s = shown + '...';
+    }
+
+    const chars = s.split('');
+    return chars.map((char, index) => {
+      const isSpace = char === ' ';
+      const delay = index * 80; // Stagger the flip animation
+      // render dot/ellipsis characters as literal characters inside tiles too
+      return `<span class="flip-char ${isSpace ? 'space' : ''}" style="--delay: ${delay}ms">
+                <span class="char-content" style="animation-delay: ${delay}ms">${char}</span>
+              </span>`;
+    }).join('');
   }
 
-  function updateBoard() {
-    // Generate random flight info
-    const randomDestination = destinations[Math.floor(Math.random() * destinations.length)];
-    const randomAirline = airlines[Math.floor(Math.random() * airlines.length)];
-    const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-    const randomTime = `${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`;
-    const randomFlight = `${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(Math.random() * 900 + 100)}`;
-
-    createSplitFlapText("time1", randomTime);
-    createSplitFlapText("destination1", randomDestination);
-    createSplitFlapText("flight1", randomFlight);
-    createSplitFlapText("airline1", randomAirline);
-    createSplitFlapText("status1", randomStatus);
+  function getStatusClass(status) {
+    if (!status) return '';
+    const statusLower = status.toLowerCase();
+    if (statusLower.includes('time') || statusLower.includes('operating')) return 'status-on-time';
+    if (statusLower.includes('delay')) return 'status-delayed';
+    if (statusLower.includes('cancel')) return 'status-cancelled';
+    if (statusLower.includes('board')) return 'status-boarding';
+    return '';
   }
 
-  // Update every 5 seconds
-  updateBoard();
-  setInterval(updateBoard, 5000);
+  // Demo fallback dataset (exact phrasing pulled from the reference screenshot)
+  const DEFAULT_DEPARTURES = [
+    { flightNumber: '707', location: 'MONACO', aggregatedDateTime: '14:30', statusMessage: 'DELAYED' },
+    { flightNumber: '705', location: 'ROME', aggregatedDateTime: '14:45', statusMessage: 'CANCELLED' },
+    { flightNumber: '595', location: 'LONDON', aggregatedDateTime: '14:55', statusMessage: 'ON TIME' },
+    { flightNumber: '505', location: 'MADRID', aggregatedDateTime: '15:00', statusMessage: 'CANCELLED' },
+    { flightNumber: '540', location: 'NEW YORK', aggregatedDateTime: '15:30', statusMessage: 'DELAYED' },
+    { flightNumber: '534', location: 'MOSCOW', aggregatedDateTime: '16:15', statusMessage: 'DELAYED' },
+    { flightNumber: '554', location: 'VENICE', aggregatedDateTime: '16:25', statusMessage: 'DELAYED' }
+  ];
+
+  function loadFlights() {
+    fetch('/flight_departures')
+      .then(response => response.json())
+      .then(data => {
+        const container = document.getElementById('flightsContainer');
+        
+        if (data.error) {
+          container.innerHTML = `<div class="loading">Error: ${data.error}</div>`;
+          return;
+        }
+
+        if (!data.departures || data.departures.length === 0) {
+          // use a static fallback to match the screenshot when the API provides no data
+          data.departures = DEFAULT_DEPARTURES;
+        }
+
+        // show exactly 7 rows to match the classic board layout in the reference image
+        const rowsToShow = 7;
+        // pad departures to rowsToShow with empty objects so visual grid is always full
+        const rows = data.departures.slice(0, rowsToShow).concat(Array.from({length: Math.max(0, rowsToShow - data.departures.length)}, () => ({})));
+        // set grid template rows so the board is evenly split and never scrolls
+        container.style.gridTemplateRows = `repeat(${rowsToShow}, 1fr)`;
+
+        container.innerHTML = rows.map(flight => `
+          <div class="flight-row">
+            <div class="flip-display col-flight" data-full="${flight.flightNumber || ''}" data-max="6" title="${flight.flightNumber || '---'}">
+              ${createFlipDisplay(flight.flightNumber || (flight.flightNumber === '' ? ' ' : '---'), 6)}
+            </div>
+            <div class="flip-display col-destination" data-full="${flight.location || ''}" data-max="14" title="${flight.location || 'UNKNOWN'}">
+              ${createFlipDisplay(flight.location || (flight.location === '' ? ' ' : 'UNKNOWN'), 14)}
+            </div>
+            <div class="flip-display col-time" data-full="${flight.aggregatedDateTime || ''}" data-max="5" title="${flight.aggregatedDateTime || '--:--'}">
+              ${createFlipDisplay(flight.aggregatedDateTime || '--:--', 5)}
+            </div>
+            <div class="flip-display col-status ${getStatusClass(flight.statusMessage)}" data-full="${flight.statusMessage || ''}" data-max="10" title="${flight.statusMessage || 'UNKNOWN'}">
+              ${createFlipDisplay(flight.statusMessage || (flight.statusMessage === '' ? ' ' : 'UNKNOWN'), 10)}
+            </div>
+          </div>
+        `).join('');
+
+        // (Re)start per-field cycling for clipped content
+        setupCycling();
+      })
+      .catch(error => {
+        console.error('Error loading flights:', error);
+        document.getElementById('flightsContainer').innerHTML = 
+          '<div class="loading">Error loading flight data</div>';
+      });
+  }
+
+  // Setup per-field cycling for clipped fields
+  function setupCycling() {
+    // clear previous timers
+    if (!window._flipCycleTimers) window._flipCycleTimers = [];
+    window._flipCycleTimers.forEach(id => clearInterval(id));
+    window._flipCycleTimers = [];
+
+    const container = document.getElementById('flightsContainer');
+    if (!container) return;
+
+    const cells = container.querySelectorAll('.flip-display[data-full][data-max]');
+    cells.forEach((cell, idx) => {
+      const full = (cell.getAttribute('data-full') || '').toString();
+      const max = parseInt(cell.getAttribute('data-max') || '0', 10);
+      if (!full || max <= 0) return;
+      if (full.length <= max) return; // nothing to cycle
+
+      // duplicate content to allow wrapping
+      const doubled = full + '   ' + full;
+      let start = 0;
+      const step = Math.max(1, Math.floor(Math.max(1, max) / 3));
+      const baseDelay = 2200; // ms
+      const stagger = (idx % 7) * 250;
+      const delay = baseDelay + stagger;
+
+      // initial set -- ensure first frame shows start of the text
+      const setFrame = () => {
+        // keep within bounds
+        if (start >= full.length) start = 0;
+        const slice = doubled.substr(start, max);
+        cell.innerHTML = createFlipDisplay(slice, max);
+        start = (start + step) % full.length;
+      };
+
+      // stagger initial update slightly so the board doesn't look mechanical
+      setTimeout(setFrame, 100 + stagger);
+
+      const id = setInterval(setFrame, delay);
+      window._flipCycleTimers.push(id);
+    });
+  }
+
+  // Load flights immediately and refresh every 2 minutes
+  loadFlights();
+  setInterval(loadFlights, 120000);
 </script>
 
 </body>

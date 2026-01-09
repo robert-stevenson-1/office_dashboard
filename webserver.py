@@ -24,6 +24,13 @@ socketio = SocketIO(app)
 # Define a shutdown flag to signal the thread to stop
 shutdown_flag = threading.Event()
 
+# Cache for McDonald's data
+mcdonalds_cache = {
+    'data': None,
+    'last_updated': None
+}
+MCDONALDS_CACHE_DURATION = 600  # 10 minutes in seconds
+
 # Lists to store temperature, humidity, and timestamps for plotting
 temperature_data = []
 humidity_data = []
@@ -60,14 +67,22 @@ OPEN_BUS_DATA_API_KEY = config.get("OPEN_BUS_DATA_API_KEY")
 # Function to load historical data from the CSV file when the server starts
 def load_data_from_csv():
     if os.path.exists(CSV_FILE):
-        with open(CSV_FILE, 'r') as csvfile:
-            reader = csv.reader(csvfile)
+        with open(CSV_FILE, 'r', encoding='utf-8', errors='ignore') as csvfile:
+            # Read entire content and remove NUL bytes before parsing
+            content = csvfile.read().replace('\x00', '')
+            reader = csv.reader(content.splitlines())
             for row in reader:
-                timestamp_str, temperature, humidity = row
-                timestamp = datetime.datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
-                timestamps.append(timestamp)
-                temperature_data.append(float(temperature))
-                humidity_data.append(float(humidity))
+                try:
+                    if len(row) != 3:
+                        continue
+                    timestamp_str, temperature, humidity = row
+                    timestamp = datetime.datetime.strptime(timestamp_str.strip(), "%Y-%m-%d %H:%M:%S")
+                    timestamps.append(timestamp)
+                    temperature_data.append(float(temperature))
+                    humidity_data.append(float(humidity))
+                except (ValueError, IndexError) as e:
+                    # Skip malformed rows
+                    continue
 
     # Keep only the data points from the last 5 minutes for plotting
     filter_old_data()
@@ -127,147 +142,174 @@ def filter_last_n_hours(n_hours):
 
     # Load data from the CSV file and filter out entries older than 'n' hours
     if os.path.exists(CSV_FILE):
-        with open(CSV_FILE, 'r') as csvfile:
-            reader = csv.reader(csvfile)
-            for row in reader:
-                timestamp_str, temperature, humidity = row
-                timestamp_str_cleaned = timestamp_str.replace('\x00', '')
-                timestamp = datetime.datetime.strptime(timestamp_str_cleaned, "%Y-%m-%d %H:%M:%S")
+        # For better performance with large files, read from the end
+        # Each record is approximately 50 bytes, and we have 1 record every 2 seconds
+        # So for n_hours, we need approximately: n_hours * 60 * 30 records = n_hours * 1800 records
+        estimated_records = n_hours * 1800 * 2  # Double to ensure we get enough data
+        estimated_bytes = estimated_records * 50
+        
+        try:
+            with open(CSV_FILE, 'rb') as f:
+                # Seek to near the end of the file
+                f.seek(0, 2)  # Go to end
+                file_size = f.tell()
+                start_pos = max(0, file_size - estimated_bytes)
+                f.seek(start_pos)
                 
-                if timestamp >= time_ago:
-                    filtered_timestamps.append(timestamp.strftime("%Y-%m-%d %H:%M:%S"))
-                    filtered_temperature_data.append(float(temperature))
-                    filtered_humidity_data.append(float(humidity))
+                # Skip the first partial line if we're not at the beginning
+                if start_pos > 0:
+                    f.readline()
+                
+                # Read the rest and decode, removing NUL bytes
+                content = f.read().decode('utf-8', errors='ignore').replace('\x00', '')
+                
+            reader = csv.reader(content.splitlines())
+            for row in reader:
+                try:
+                    if len(row) != 3:
+                        continue
+                    timestamp_str, temperature, humidity = row
+                    timestamp = datetime.datetime.strptime(timestamp_str.strip(), "%Y-%m-%d %H:%M:%S")
+                    
+                    if timestamp >= time_ago:
+                        filtered_timestamps.append(timestamp.strftime("%Y-%m-%d %H:%M:%S"))
+                        filtered_temperature_data.append(float(temperature))
+                        filtered_humidity_data.append(float(humidity))
+                except (ValueError, IndexError) as e:
+                    # Skip malformed rows
+                    continue
+        except Exception as e:
+            print(f"Error reading CSV file: {e}")
 
     return filtered_timestamps, filtered_temperature_data, filtered_humidity_data
 
 # Quote of the Day - updated with the new list
 quotes = [
-    {"quote": "I’d explain it to you, but I left my English-to-Dingbat dictionary at home."},
+    {"quote": "I'd explain it to you, but I left my English-to-Dingbat dictionary at home."},
     {"quote": "You bring everyone so much joy... when you leave the room."},
-    {"quote": "I’d agree with you, but then we’d both be wrong."},
-    {"quote": "You’re proof that even evolution makes mistakes."},
+    {"quote": "I'd agree with you, but then we'd both be wrong."},
+    {"quote": "You're proof that even evolution makes mistakes."},
     {"quote": "Your secrets are always safe with me. I never even listen when you tell me them."},
-    {"quote": "I’m not saying you’re stupid; I’m just saying you have bad luck when it comes to thinking."},
+    {"quote": "I'm not saying you're stupid; I'm just saying you have bad luck when it comes to thinking."},
     {"quote": "You have the perfect face for radio."},
-    {"quote": "I don’t know what makes you so dumb, but it really works."},
-    {"quote": "I’m not insulting you; I’m describing you."},
-    {"quote": "You’re like a software update. Whenever I see you, I think, 'Not now.'"},
+    {"quote": "I don't know what makes you so dumb, but it really works."},
+    {"quote": "I'm not insulting you; I'm describing you."},
+    {"quote": "You're like a software update. Whenever I see you, I think, 'Not now.'"},
     {"quote": "I thought of you today. It reminded me to take out the trash."},
-    {"quote": "You’re like a cloud. When you disappear, it’s a beautiful day."},
-    {"quote": "I don’t have the energy to pretend to like you today."},
-    {"quote": "You’re the reason God created the middle finger."},
-    {"quote": "If I had a dollar for every time I saw you, I’d be broke."},
-    {"quote": "You’re as useless as the 'ueue' in 'queue.'"},
-    {"quote": "I’m jealous of people who don’t know you."},
-    {"quote": "You’re like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
-    {"quote": "You have a nice face. I’d like to keep it in a jar."},
-    {"quote": "Some day you’ll go far... and I hope you stay there."},
-    {"quote": "I’d call you a tool, but that implies you’re useful."},
+    {"quote": "You're like a cloud. When you disappear, it's a beautiful day."},
+    {"quote": "I don't have the energy to pretend to like you today."},
+    {"quote": "You're the reason God created the middle finger."},
+    {"quote": "If I had a dollar for every time I saw you, I'd be broke."},
+    {"quote": "You're as useless as the 'ueue' in 'queue.'"},
+    {"quote": "I'm jealous of people who don't know you."},
+    {"quote": "You're like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
+    {"quote": "You have a nice face. I'd like to keep it in a jar."},
+    {"quote": "Some day you'll go far... and I hope you stay there."},
+    {"quote": "I'd call you a tool, but that implies you're useful."},
     {"quote": "If laughter is the best medicine, your face must be curing the world."},
     {"quote": "A clear conscience is usually the sign of a bad memory."},
-    {"quote": "I used to think I was indecisive, but now I’m not too sure."},
-    {"quote": "You’re as welcome as a skunk at a garden party."},
-    {"quote": "If you were any more inbred, you’d be a sandwich."},
-    {"quote": "You’re as useful as a screen door on a submarine."},
-    {"quote": "You’re not stupid; you just have bad luck when it comes to thinking."},
+    {"quote": "I used to think I was indecisive, but now I'm not too sure."},
+    {"quote": "You're as welcome as a skunk at a garden party."},
+    {"quote": "If you were any more inbred, you'd be a sandwich."},
+    {"quote": "You're as useful as a screen door on a submarine."},
+    {"quote": "You're not stupid; you just have bad luck when it comes to thinking."},
     {"quote": "You bring so much joy... when you leave the room."},
     {"quote": "I can see why people hate you."},
-    {"quote": "If I wanted to hear from an asshole, I’d fart."},
-    {"quote": "You’re the reason God created the middle finger."},
-    {"quote": "I’d agree with you, but then we’d both be wrong."},
-    {"quote": "You’re like a broken pencil: pointless."},
-    {"quote": "I’d explain it to you, but I don’t have any crayons."},
-    {"quote": "You’re the human version of a participation trophy."},
-    {"quote": "You’re like a cloud; when you disappear, it’s a beautiful day."},
+    {"quote": "If I wanted to hear from an asshole, I'd fart."},
+    {"quote": "You're the reason God created the middle finger."},
+    {"quote": "I'd agree with you, but then we'd both be wrong."},
+    {"quote": "You're like a broken pencil: pointless."},
+    {"quote": "I'd explain it to you, but I don't have any crayons."},
+    {"quote": "You're the human version of a participation trophy."},
+    {"quote": "You're like a cloud; when you disappear, it's a beautiful day."},
     {"quote": "Your face makes onions cry."},
-    {"quote": "I’m not lazy; I’m on energy-saving mode."},
-    {"quote": "If at first you don’t succeed, then skydiving definitely isn’t for you."},
-    {"quote": "You’re as pleasant as a root canal."},
-    {"quote": "I’d like to see things from your perspective, but I can’t get my head that far up my own ass."},
-    {"quote": "You’re like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
+    {"quote": "I'm not lazy; I'm on energy-saving mode."},
+    {"quote": "If at first you don't succeed, then skydiving definitely isn't for you."},
+    {"quote": "You're as pleasant as a root canal."},
+    {"quote": "I'd like to see things from your perspective, but I can't get my head that far up my own ass."},
+    {"quote": "You're like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
     {"quote": "I hope your day is as pleasant as your personality."},
     {"quote": "You have the perfect face for radio."},
-    {"quote": "You’re proof that even evolution makes mistakes."},
+    {"quote": "You're proof that even evolution makes mistakes."},
     {"quote": "You bring everyone so much joy... when you leave the room."},
-    {"quote": "I’d call you a tool, but that implies you’re useful."},
-    {"quote": "If I wanted to hear from an asshole, I’d fart."},
-    {"quote": "You have a nice face. I’d like to keep it in a jar."},
+    {"quote": "I'd call you a tool, but that implies you're useful."},
+    {"quote": "If I wanted to hear from an asshole, I'd fart."},
+    {"quote": "You have a nice face. I'd like to keep it in a jar."},
     {"quote": "If you were any more dense, we could put you in a black hole."},
-    {"quote": "You’re as useful as a chocolate teapot."},
-    {"quote": "You’re not even wrong."},
-    {"quote": "You’re the human version of a participation trophy."},
-    {"quote": "You’re like a cloud; when you disappear, it’s a beautiful day."},
-    {"quote": "I’d explain it to you, but I don’t have the crayons."},
-    {"quote": "You’re the reason they put instructions on shampoo."},
-    {"quote": "You’re as useless as a screen door on a submarine."},
-    {"quote": "I’d agree with you, but then we’d both be wrong."},
-    {"quote": "You’re like a software update; whenever I see you, I think, 'Not now.'"},
+    {"quote": "You're as useful as a chocolate teapot."},
+    {"quote": "You're not even wrong."},
+    {"quote": "You're the human version of a participation trophy."},
+    {"quote": "You're like a cloud; when you disappear, it's a beautiful day."},
+    {"quote": "I'd explain it to you, but I don't have the crayons."},
+    {"quote": "You're the reason they put instructions on shampoo."},
+    {"quote": "You're as useless as a screen door on a submarine."},
+    {"quote": "I'd agree with you, but then we'd both be wrong."},
+    {"quote": "You're like a software update; whenever I see you, I think, 'Not now.'"},
     {"quote": "I can see why people hate you."},
-    {"quote": "If you were any more inbred, you’d be a sandwich."},
-    {"quote": "You’re the human version of a participation trophy."},
-    {"quote": "You’re like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
-    {"quote": "If I had a dollar for every time I saw you, I’d be broke."},
-    {"quote": "You’re as welcome as a skunk at a garden party."},
-    {"quote": "I’d like to see things from your perspective, but I can’t get my head that far up my own ass."},
+    {"quote": "If you were any more inbred, you'd be a sandwich."},
+    {"quote": "You're the human version of a participation trophy."},
+    {"quote": "You're like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
+    {"quote": "If I had a dollar for every time I saw you, I'd be broke."},
+    {"quote": "You're as welcome as a skunk at a garden party."},
+    {"quote": "I'd like to see things from your perspective, but I can't get my head that far up my own ass."},
     {"quote": "I thought of you today. It reminded me to take out the trash."},
-    {"quote": "You’re like a cloud; when you disappear, it’s a beautiful day."},
-    {"quote": "I’d explain it to you, but I don’t have the crayons."},
-    {"quote": "You’re the reason they put instructions on shampoo."},
-    {"quote": "You’re the reason God created the middle finger."},
+    {"quote": "You're like a cloud; when you disappear, it's a beautiful day."},
+    {"quote": "I'd explain it to you, but I don't have the crayons."},
+    {"quote": "You're the reason they put instructions on shampoo."},
+    {"quote": "You're the reason God created the middle finger."},
     {"quote": "You bring everyone so much joy... when you leave the room."},
-    {"quote": "You’re not stupid; you just have bad luck when it comes to thinking."},
-    {"quote": "You’re proof that even evolution makes mistakes."},
-    {"quote": "If I wanted to hear from an asshole, I’d fart."},
-    {"quote": "You’re about as useful as a chocolate teapot."},
-    {"quote": "You have a nice face. I’d like to keep it in a jar."},
-    {"quote": "You’re like a software update; whenever I see you, I think, 'Not now.'"},
-    {"quote": "You’re like a broken pencil: pointless."},
-    {"quote": "You’re as useful as a screen door on a submarine."},
+    {"quote": "You're not stupid; you just have bad luck when it comes to thinking."},
+    {"quote": "You're proof that even evolution makes mistakes."},
+    {"quote": "If I wanted to hear from an asshole, I'd fart."},
+    {"quote": "You're about as useful as a chocolate teapot."},
+    {"quote": "You have a nice face. I'd like to keep it in a jar."},
+    {"quote": "You're like a software update; whenever I see you, I think, 'Not now.'"},
+    {"quote": "You're like a broken pencil: pointless."},
+    {"quote": "You're as useful as a screen door on a submarine."},
     {"quote": "You bring everyone so much joy... when you leave the room."},
-    {"quote": "You’re the human version of a participation trophy."},
-    {"quote": "You’re as welcome as a skunk at a garden party."},
+    {"quote": "You're the human version of a participation trophy."},
+    {"quote": "You're as welcome as a skunk at a garden party."},
     {"quote": "I hope your day is as pleasant as your personality."},
-    {"quote": "I’d like to see things from your perspective, but I can’t get my head that far up my own ass."},
-    {"quote": "If you were any more inbred, you’d be a sandwich."},
-    {"quote": "I’m not insulting you; I’m describing you."},
+    {"quote": "I'd like to see things from your perspective, but I can't get my head that far up my own ass."},
+    {"quote": "If you were any more inbred, you'd be a sandwich."},
+    {"quote": "I'm not insulting you; I'm describing you."},
     {"quote": "You have the perfect face for radio."},
-    {"quote": "I’d call you a tool, but that implies you’re useful."},
-    {"quote": "You’re like a software update. Whenever I see you, I think, 'Not now.'"},
-    {"quote": "You’re proof that even evolution makes mistakes."},
-    {"quote": "I’d agree with you, but then we’d both be wrong."},
-    {"quote": "You’re the reason they put instructions on shampoo."},
-    {"quote": "I’d explain it to you, but I don’t have the crayons."},
-    {"quote": "You’re like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
+    {"quote": "I'd call you a tool, but that implies you're useful."},
+    {"quote": "You're like a software update. Whenever I see you, I think, 'Not now.'"},
+    {"quote": "You're proof that even evolution makes mistakes."},
+    {"quote": "I'd agree with you, but then we'd both be wrong."},
+    {"quote": "You're the reason they put instructions on shampoo."},
+    {"quote": "I'd explain it to you, but I don't have the crayons."},
+    {"quote": "You're like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
     {"quote": "If laughter is the best medicine, your face must be curing the world."},
     {"quote": "You bring so much joy... when you leave the room."},
-    {"quote": "You’re the reason God created the middle finger."},
-    {"quote": "If at first you don’t succeed, then skydiving definitely isn’t for you."},
-    {"quote": "You’re like a cloud; when you disappear, it’s a beautiful day."},
+    {"quote": "You're the reason God created the middle finger."},
+    {"quote": "If at first you don't succeed, then skydiving definitely isn't for you."},
+    {"quote": "You're like a cloud; when you disappear, it's a beautiful day."},
     {"quote": "I thought of you today. It reminded me to take out the trash."},
     {"quote": "I can see why people hate you."},
-    {"quote": "I’d like to see things from your perspective, but I can’t get my head that far up my own ass."},
-    {"quote": "You’re as useless as a chocolate teapot."},
-    {"quote": "I’d agree with you, but then we’d both be wrong."},
-    {"quote": "You’re proof that even evolution makes mistakes."},
-    {"quote": "You’re the reason they put instructions on shampoo."},
-    {"quote": "You’re like a software update; whenever I see you, I think, 'Not now.'"},
+    {"quote": "I'd like to see things from your perspective, but I can't get my head that far up my own ass."},
+    {"quote": "You're as useless as a chocolate teapot."},
+    {"quote": "I'd agree with you, but then we'd both be wrong."},
+    {"quote": "You're proof that even evolution makes mistakes."},
+    {"quote": "You're the reason they put instructions on shampoo."},
+    {"quote": "You're like a software update; whenever I see you, I think, 'Not now.'"},
     {"quote": "I hope your day is as pleasant as your personality."},
-    {"quote": "You’re about as useful as a screen door on a submarine."},
-    {"quote": "I’d explain it to you, but I don’t have the crayons."},
-    {"quote": "You have a nice face. I’d like to keep it in a jar."},
-    {"quote": "You’re the human version of a participation trophy."},
-    {"quote": "You’re not stupid; you just have bad luck when it comes to thinking."},
+    {"quote": "You're about as useful as a screen door on a submarine."},
+    {"quote": "I'd explain it to you, but I don't have the crayons."},
+    {"quote": "You have a nice face. I'd like to keep it in a jar."},
+    {"quote": "You're the human version of a participation trophy."},
+    {"quote": "You're not stupid; you just have bad luck when it comes to thinking."},
     {"quote": "You bring so much joy... when you leave the room."},
-    {"quote": "You’re like a broken pencil: pointless."},
-    {"quote": "I’d call you a tool, but that implies you’re useful."},
-    {"quote": "I’m not saying you’re stupid; I’m just saying you have bad luck when it comes to thinking."},
-    {"quote": "You’re the reason God created the middle finger."},
-    {"quote": "You’re like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
-    {"quote": "You’re the human version of a participation trophy."},
-    {"quote": "I’d agree with you, but then we’d both be wrong."},
-    {"quote": "I’d explain it to you, but I don’t have any crayons."},
-    {"quote": "You’re like a cloud; when you disappear, it’s a beautiful day."},
+    {"quote": "You're like a broken pencil: pointless."},
+    {"quote": "I'd call you a tool, but that implies you're useful."},
+    {"quote": "I'm not saying you're stupid; I'm just saying you have bad luck when it comes to thinking."},
+    {"quote": "You're the reason God created the middle finger."},
+    {"quote": "You're like a slinky; not really good for much, but you bring a smile when you fall down the stairs."},
+    {"quote": "You're the human version of a participation trophy."},
+    {"quote": "I'd agree with you, but then we'd both be wrong."},
+    {"quote": "I'd explain it to you, but I don't have any crayons."},
+    {"quote": "You're like a cloud; when you disappear, it's a beautiful day."},
     {"quote": "I thought of you today. It reminded me to take out the trash."},
     {"quote": "You bring everyone so much joy... when you leave the room."}
 ]
@@ -710,7 +752,8 @@ def parse_departures(xml_data):
         {'platform': '6', 'operator': 'Kiwi Rail', 'destination_name': 'Auckland Strand'},
         {'platform': '6', 'operator': 'Deutsche Bahn', 'destination_name': 'Bielefeld Hbf'},
         {'platform': '6', 'operator': 'ОАО Trans-Siberian', 'destination_name': 'Vladivostok'},
-        {'platform': '6', 'operator': 'Trenes Argentinos', 'destination_name': 'Buenos Aires Retiro'}
+        {'platform': '6', 'operator': 'Trenes Argentinos', 'destination_name': 'Buenos Aires Retiro'},
+        {'platform': '6', 'operator': 'Blue Train', 'destination_name': 'Cape Town'}
     ]
 
     random_train = random.choice(train_options)
@@ -1070,6 +1113,40 @@ def heathrow_airport():
 @app.route('/pub_map')
 def pub_map():
     return render_template('pub_map.html')
+
+@app.route('/mcdonalds_status')
+def mcdonalds_status():
+    """Cached endpoint for McDonald's ice cream machine status"""
+    global mcdonalds_cache
+    
+    current_time = datetime.datetime.now()
+    
+    # Check if cache is still valid
+    if (mcdonalds_cache['data'] is not None and 
+        mcdonalds_cache['last_updated'] is not None and
+        (current_time - mcdonalds_cache['last_updated']).total_seconds() < MCDONALDS_CACHE_DURATION):
+        print(f"Returning cached McDonald's data (age: {(current_time - mcdonalds_cache['last_updated']).total_seconds():.0f}s)")
+        return jsonify(mcdonalds_cache['data'])
+    
+    # Cache is stale or empty, fetch new data
+    try:
+        print("Fetching fresh McDonald's data from API...")
+        response = requests.get('https://mcbroken.com/markers.json', timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Update cache
+        mcdonalds_cache['data'] = data
+        mcdonalds_cache['last_updated'] = current_time
+        
+        return jsonify(data)
+    except Exception as e:
+        print(f"Error fetching McDonald's data: {e}")
+        # If we have stale cache data, return it anyway
+        if mcdonalds_cache['data'] is not None:
+            print("Returning stale cached data due to error")
+            return jsonify(mcdonalds_cache['data'])
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/pub_data')
 def get_pub_data():
@@ -1433,6 +1510,22 @@ def image(image_name):
     # The image exists, so render the template and pass the necessary variables.
     image_url = url_for('static', filename=f"{image_name}.jpg")
     return render_template('image.html', image_name=image_name, image_url=image_url)
+
+# from lincoln_bin_scraper import scrape_lincoln_bins
+
+# @app.route('/bins', methods=['GET', 'POST'])
+# def index():
+#     if request.method == 'POST':
+#         postcode = request.form.get('postcode')
+#         if postcode:
+#             # Run the scraper
+#             try:
+#                 results = scrape_lincoln_bins(postcode)
+#                 return render_template('bins.html', results=results, postcode=postcode)
+#             except Exception as e:
+#                 return render_template('bins.html', error=str(e))
+    
+#     return render_template('bins.html')
 
 if __name__ == '__main__':
 

@@ -15,19 +15,36 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <!-- Top navigation bar -->
+    <nav class="top-nav">
+        <div class="nav-left">
+            <a class="brand" href="{{ url_for('home') }}">
+                <img src="{{ url_for('static', filename='duck.png') }}" height="28" alt="logo" />
+                <span class="brand-text">Office Dashboard</span>
+            </a>
+        </div>
 
-<header style="display: flex; align-items: center; justify-content: space-between; padding: 10px;">
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <div>Office Dashboard</div>
-        <img src="{{ url_for('static', filename='duck.png') }}" height="30px" />
+        <div class="nav-center">
+            <ul class="nav-links">
+                <li><a href="{{ url_for('temperature') }}">Temperature</a></li>
+                <li><a href="{{ url_for('departures') }}">Train Departures</a></li>
+                <li><a href="{{ url_for('leaderboard') }}">Leaderboard</a></li>
+                <li><a href="{{ url_for('werewolves') }}">Werewolves</a></li>
+            </ul>
+        </div>
 
-        <img src="{{ url_for('static', filename='racoon.gif') }}" class="racoon" />
+        <div class="nav-right">
+            <div class="right-branding">
+                <img src="{{ url_for('static', filename='rob_weather/sun.jpg') }}" class="racoon spinny-rob" />
+                <img src="{{ url_for('static', filename='rob_weather/jon.jpg') }}" class="racoon spinny-rob" />
+                <img src="{{ url_for('static', filename='rob_weather/otherrob.jpg') }}" class="racoon spinny-rob" />
+                <img src="{{ url_for('static', filename='racoon.gif') }}" class="racoon" alt="racoon" />
+                <img src="{{ url_for('static', filename='lizard.gif') }}" class="racoon" alt="lizard" />
+            </div>
 
-        <img src="{{ url_for('static', filename='lizard.gif') }}" class="racoon" />
-    </div>
-
-    <div id="clock" style="font-weight: bold;"></div>
-</header>
+            <div id="clock" class="nav-clock" style="font-weight: bold;"></div>
+        </div>
+    </nav>
 
 <div class="info-container">
     <div class="info">
@@ -81,7 +98,7 @@
     </div>
 
     <div class="info" id="gone-home" style="display: none; text-align: center; font-size: 2em; padding: 20px;">
-        <img src="{{ url_for('static', filename='rob_weather/home.jpg') }}" alt="${data.description}" class="rob_forecast_image" />
+        <img src="{{ url_for('static', filename='rob_weather/home.jpg') }}" alt="${data.description}" class="rob_forecast_image spinny-rob" />
         <br />
         Gone Home!
     </div>
@@ -126,7 +143,7 @@
 </div>
 
 <footer>
-    &copy; 2024 Ducking Duck Ltd. 
+    &copy; 2024 Ducking Duck Ltd.
 
     <img src="{{ url_for('static', filename='duck.png') }}" height="15px">            
     <!-- <div class="news-ticker">
@@ -136,18 +153,33 @@
             <ul id="newsList"></ul>
         </div>
     </div> -->
+    No Vibe Coding!
 </footer>
 
 <script>
+    // Navbar toggle for small screens
+    (function() {
+        const toggle = document.querySelector('.nav-toggle');
+        const nav = document.querySelector('.top-nav');
+        if (toggle && nav) {
+            toggle.addEventListener('click', () => nav.classList.toggle('open'));
+
+            // Close on link click (helps on mobile)
+            document.querySelectorAll('.nav-links a').forEach(a => {
+                a.addEventListener('click', () => nav.classList.remove('open'));
+            });
+        }
+    })();
     const socket = io();
 
     // Initialize Plotly chart for temperature and humidity on the same graph
     const layout = {
         title: 'Temperature and Humidity',
         xaxis: { title: 'Time' },
-        yaxis: { title: 'Temperature (°C)', side: 'left' },
-        yaxis2: { title: 'Humidity (%)', side: 'right', overlaying: 'y', showgrid: false },
-        margin: { t: 50, r: 30, l: 50, b: 50 }
+        showlegend: false,
+        yaxis: { title: { text: 'Temperature (°C)', font: { color: 'red' } }, side: 'left' },
+        yaxis2: { title: { text: 'Humidity (%)', font: { color: 'blue' } }, side: 'right', overlaying: 'y', showgrid: false },
+        margin: { t: 50, r: 50, l: 50, b: 50 }
     };
 
     // Initial Plot for temperature and humidity
@@ -181,11 +213,36 @@
         Plotly.extendTraces('combinedChart', { x: [[data.time]], y: [[data.temperature]] }, [0]);
         Plotly.extendTraces('combinedChart', { x: [[data.time]], y: [[data.humidity]] }, [1]);
 
-        // Update the current temperature and averages displayed
-        // document.getElementById('currentTemperature').innerText = data.current_temperature.toFixed(2);
-        document.getElementById('currentTemperature').innerText = data.temperature_data[data.temperature_data.length - 1].toFixed(2);
-        document.getElementById('averageTemperature5Min').innerText = data.average_temperature_5min.toFixed(2);
-        document.getElementById('averageTemperature5Days').innerText = data.average_temperature_5days.toFixed(2);
+        // Update the current temperature and averages displayed (guarded)
+        const currentTempElem = document.getElementById('currentTemperature');
+        if (currentTempElem) {
+            if (typeof data.temperature === 'number' && !isNaN(data.temperature)) {
+                currentTempElem.innerText = data.temperature.toFixed(2);
+            } else if (Array.isArray(data.temperature_data) && data.temperature_data.length) {
+                const last = Number(data.temperature_data[data.temperature_data.length - 1]);
+                currentTempElem.innerText = isNaN(last) ? '--' : last.toFixed(2);
+            } else {
+                currentTempElem.innerText = '--';
+            }
+        }
+
+        const avg5Elem = document.getElementById('averageTemperature5Min');
+        if (avg5Elem) {
+            if (data.average_temperature_5min !== undefined && !isNaN(Number(data.average_temperature_5min))) {
+                avg5Elem.innerText = Number(data.average_temperature_5min).toFixed(2);
+            } else {
+                avg5Elem.innerText = '--';
+            }
+        }
+
+        const avg5dElem = document.getElementById('averageTemperature5Days');
+        if (avg5dElem) {
+            if (data.average_temperature_5days !== undefined && !isNaN(Number(data.average_temperature_5days))) {
+                avg5dElem.innerText = Number(data.average_temperature_5days).toFixed(2);
+            } else {
+                avg5dElem.innerText = '--';
+            }
+        }
     });
 
     const maxPoints = 60; // Adjust this based on your requirement
@@ -569,59 +626,74 @@
     setInterval(updateMap, 30000);
 
     async function checkMICE() {
-        const markers = await (await fetch("https://mcbroken.com/markers.json", { "method": "GET" })).json();
-
-        const id_map = {
-            "macice-p-rust": { "street": "Ruston Road", "city": "Lincoln" },
-            "macice-p-hs": { "street": "323 High Street", "city": "Lincoln" },
-            "macice-p-carl": { "street": "The Carlton Centre", "city": "Lincoln" },
-            "macice-p-moor": { "street": "Moorland Close", "city": "Lincoln" }
-        }
-
-        let allBroken = true; // Flag to check if all are broken
-
-        Object.keys(id_map).forEach(key => {
-            const vals = id_map[key];
-            const shop = markers.features.filter(obj => {
-                return (obj.properties.city === vals.city && obj.properties.street === vals.street && obj.properties.country === "UK");
-            })[0];
-
-            const indicator = document.getElementById(key);
+        try {
+            const response = await fetch("/mcdonalds_status");
+            const markers = await response.json();
             
-            console.log(shop);
-            
-            switch (shop.properties.dot) {
-                case "working":
+            console.log("McDonald's API fetched successfully, total features:", markers.features.length);
+
+            const id_map = {
+                "macice-p-rust": { "street": "Ruston Road", "city": "Lincoln" },
+                "macice-p-hs": { "street": "323 High Street", "city": "Lincoln" },
+                "macice-p-carl": { "street": "The Carlton Centre", "city": "Lincoln" },
+                "macice-p-moor": { "street": "Moorland Close", "city": "Lincoln" }
+            }
+
+            // Log all Lincoln McDonald's to help debug
+            const lincolnLocations = markers.features.filter(obj => obj.properties.city === "Lincoln" && obj.properties.country === "UK");
+            console.log("All Lincoln McDonald's locations:", lincolnLocations.map(obj => obj.properties.street));
+
+            let allBroken = true; // Flag to check if all are broken
+
+            Object.keys(id_map).forEach(key => {
+                const vals = id_map[key];
+                const shop = markers.features.filter(obj => {
+                    return (obj.properties.city === vals.city && obj.properties.street === vals.street && obj.properties.country === "UK");
+                })[0];
+
+                const indicator = document.getElementById(key);
+                
+                console.log(`Checking ${vals.street}:`, shop);
+                
+                // If shop not found in API data
+                if (!shop) {
+                    indicator.innerText = "Unknown (Not Found)";
+                    indicator.classList = ["mcice-unknown"];
+                    allBroken = false;
+                    return;
+                }
+                
+                // Check both dot and is_broken properties for accurate status
+                if (shop.properties.dot === "working" && !shop.properties.is_broken) {
                     indicator.innerText = "Working";
                     indicator.classList = ["mcice-good"];
-                    allBroken = false; // Set flag to false if any machine is working
-                    break;
-
-                case "broken":
+                    allBroken = false; // Machine is working
+                } else if (shop.properties.is_broken || shop.properties.dot === "broken") {
                     indicator.innerText = "Broken";
                     indicator.classList = ["mcice-bad"];
-                    break;
-
-                case "inactive":
-                default:
+                    // Keep allBroken as true
+                } else {
                     indicator.innerText = "Unknown";
                     indicator.classList = ["mcice-unknown"];
-                    allBroken = false; // Set flag to false if any machine is inactive or unknown
-                    break;
-            }
-        });
+                    allBroken = false; // Don't show "all broken" if status is genuinely unknown
+                }
+            });
 
-        // Show "All Broken" if all machines are broken
-        const allBrokenMessage = document.getElementById("all-broken-message");
-        if (allBroken) {
-            allBrokenMessage.innerText = "All Broken nearest Wendys: 195 High Street";
-        } else {
-            allBrokenMessage.innerText = ""; // Clear the message if not all are broken
+            // Show "All Broken" if all machines are broken
+            const allBrokenMessage = document.getElementById("all-broken-message");
+            if (allBroken) {
+                allBrokenMessage.innerText = "All Broken nearest Wendys: 195 High Street";
+            } else {
+                allBrokenMessage.innerText = ""; // Clear the message if not all are broken
+            }
+        } catch (error) {
+            console.error("Error fetching McDonald's data:", error);
         }
     }
 
     // Check every 10 minutes the mc status (600000 milliseconds)
     setInterval(checkMICE, 600000);
+    console.log("About to call checkMICE() for the first time...");
     checkMICE(); // Initial check when the page loads
 
 
