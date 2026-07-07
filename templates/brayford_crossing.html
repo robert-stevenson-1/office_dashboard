@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Brayford Level Crossing — Closures</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body { font-family: sans-serif; margin: 1rem; }
+    .card { border: 1px solid #ddd; padding: 1rem; margin: .5rem 0; border-radius: 6px; }
+    .muted { color: #666; font-size: .9rem }
+  </style>
+</head>
+<body>
+  <h1>Brayford Level Crossing — Upcoming Closures</h1>
+  <div id="status" class="muted">Loading…</div>
+  <div id="list"></div>
+  <script>
+    async function load() {
+      document.getElementById('status').textContent = 'Fetching latest data...';
+      try {
+        const res = await fetch('/api/brayford_crossing');
+        const data = await res.json();
+        if (data.error) {
+          document.getElementById('status').textContent = 'Error: ' + data.error;
+          return;
+        }
+        document.getElementById('status').textContent = `Station: ${data.station_name} (${data.station_code}) — fetched ${new Date(data.fetched).toLocaleString()}`;
+        const list = document.getElementById('list');
+        list.innerHTML = '';
+        if (!data.closures || data.closures.length === 0) {
+          list.innerHTML = '<div class="card">No expected closures in the next 3 hours.</div>';
+          return;
+        }
+        for (const c of data.closures) {
+          const start = new Date(c.start);
+          const end = new Date(c.end);
+          const div = document.createElement('div');
+          div.className = 'card';
+          div.innerHTML = `<strong>${start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</strong> — ${end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}<br><span class="muted">${c.operator} to ${c.destination} (Platform ${c.platform})</span>`;
+          list.appendChild(div);
+        }
+      } catch (e) {
+        document.getElementById('status').textContent = 'Fetch error: ' + e;
+      }
+    }
+
+    load();
+    setInterval(load, 60000); // refresh every 60s
+  </script>
+</body>
+</html>

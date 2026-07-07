@@ -49,6 +49,7 @@ PORT = 5001
 BBC_RSS_FEED = "http://feeds.bbci.co.uk/news/rss.xml"
 ONION_RSS_FEED = "https://www.theonion.com/rss"
 DAILY_MASH_RSS_FEED = "https://www.thedailymash.co.uk/feed"
+SUFFOLK_GAZETTE_RSS_FEED = "https://www.suffolkgazette.com/feed/"
 WEATHER_URL = "http://api.openweathermap.org/data/2.5/weather"
 AIRPORT_CODE = "HUY"
 FLIGHT_API_URL = "http://api.aviationstack.com/v1/flights"
@@ -530,9 +531,10 @@ def news():
         bbc_items = fetch_rss(BBC_RSS_FEED)
         onion_items = fetch_rss(ONION_RSS_FEED)
         mash_items = fetch_rss(DAILY_MASH_RSS_FEED)
+        suffolk_items = fetch_rss(SUFFOLK_GAZETTE_RSS_FEED)
 
         # Extract and combine articles from all sources
-        for item in bbc_items + onion_items + mash_items:
+        for item in bbc_items + onion_items + mash_items + suffolk_items:
             title = item.find("title").text
             link = item.find("link").text
             news.append({"title": title, "link": link})
@@ -751,9 +753,13 @@ def parse_departures(xml_data):
         {'platform': '6', 'operator': 'The Ghan', 'destination_name': 'Darwin'},
         {'platform': '6', 'operator': 'Kiwi Rail', 'destination_name': 'Auckland Strand'},
         {'platform': '6', 'operator': 'Deutsche Bahn', 'destination_name': 'Bielefeld Hbf'},
-        {'platform': '6', 'operator': 'ОАО Trans-Siberian', 'destination_name': 'Vladivostok'},
+        {'platform': '6', 'operator': 'RZD Trans-Siberian', 'destination_name': 'Vladivostok'},
         {'platform': '6', 'operator': 'Trenes Argentinos', 'destination_name': 'Buenos Aires Retiro'},
-        {'platform': '6', 'operator': 'Blue Train', 'destination_name': 'Cape Town'}
+        {'platform': '6', 'operator': 'Blue Train', 'destination_name': 'Cape Town'},
+        {'platform': '6', 'operator': 'JR West Nozomi', 'destination_name': 'Shin-Osaka'},
+        {'platform': '6', 'operator': 'Springfield Monorail ', 'destination_name': 'North Haverbrook'},
+        {'platform': '6', 'operator': 'Midnight Train ', 'destination_name': 'Anywhere'},
+        {'platform': '6', 'operator': 'Glacier Express ', 'destination_name': 'Zermatt'}
     ]
 
     random_train = random.choice(train_options)
@@ -1510,6 +1516,116 @@ def image(image_name):
     # The image exists, so render the template and pass the necessary variables.
     image_url = url_for('static', filename=f"{image_name}.jpg")
     return render_template('image.html', image_name=image_name, image_url=image_url)
+
+
+# --- Brayford Level Crossing closure estimation ---
+# Simple estimator: uses train departures for Lincoln (LCN) to predict when the level crossing
+# will likely be closed. This is an approximation (closure windows are estimated as
+# [std - 2 minutes, std + 1 minute]). Uses a short in-memory cache to avoid hitting
+# the train API on every page view.
+BRAYFORD_CACHE = {'data': None, 'last_updated': None}
+BRAYFORD_CACHE_DURATION = 60  # seconds
+
+
+def fetch_departures_for_station(station_code, num_rows=20):
+    """Fetch departures using the existing TRAIN API and parse them with parse_departures."""
+    APIRequest = f"""
+        <x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ldb="http://thalesgroup.com/RTTI/2017-10-01/ldb/" xmlns:typ4="http://thalesgroup.com/RTTI/2013-11-28/Token/types">
+            <x:Header>
+                <typ4:AccessToken>
+                    <typ4:TokenValue>{TRAIN_API_KEY}</typ4:TokenValue>
+                </typ4:AccessToken>
+            </x:Header>
+            <x:Body>
+                <ldb:GetDepBoardWithDetailsRequest>
+                    <ldb:numRows>{num_rows}</ldb:numRows>
+                    <ldb:crs>{station_code}</ldb:crs>
+                    <ldb:filterCrs></ldb:filterCrs>
+                    <ldb:filterType>to</ldb:filterType>
+                    <ldb:timeOffset>0</ldb:timeOffset>
+                    <ldb:timeWindow>240</ldb:timeWindow>
+                </ldb:GetDepBoardWithDetailsRequest>
+            </x:Body>
+        </x:Envelope>
+    """
+
+    headers = {'Content-Type': 'text/xml'}
+    response = requests.post(TRAIN_API_URL, data=APIRequest, headers=headers)
+    response.raise_for_status()
+    station_name, station_code, departure_data = parse_departures(response.text)
+    return station_name, station_code, departure_data
+
+
+def estimate_crossing_closures_from_departures(departure_data, lookahead_minutes=180):
+    """Estimate closure windows from departure times.
+
+    Returns a list of dicts: {start, end, std, destination, operator, platform}
+    Times are returned as ISO 8601 strings in local server time.
+    """
+    now = datetime.datetime.now()
+    closures = []
+
+    for d in departure_data:
+        std_str = d.get('std')
+        if not std_str:
+            continue
+        try:
+            dt = datetime.datetime.strptime(std_str, '%H:%M').replace(year=now.year, month=now.month, day=now.day)
+            # If parsed time is far in the past, assume it's for the next day
+            if dt < now - datetime.timedelta(hours=12):
+                dt += datetime.timedelta(days=1)
+
+            # Skip events outside the lookahead window or already passed
+            if dt < now - datetime.timedelta(minutes=1):
+                continue
+            if dt > now + datetime.timedelta(minutes=lookahead_minutes):
+                continue
+
+            start = dt - datetime.timedelta(minutes=2)
+            end = dt + datetime.timedelta(minutes=1)
+
+            closures.append({
+                'start': start.isoformat(),
+                'end': end.isoformat(),
+                'std': std_str,
+                'destination': d.get('destination_name'),
+                'operator': d.get('operator'),
+                'platform': d.get('platform')
+            })
+        except Exception:
+            continue
+
+    closures.sort(key=lambda x: x['start'])
+    return closures
+
+
+@app.route('/api/brayford_crossing')
+def api_brayford_crossing():
+    """API returning estimated crossing closures for Brayford (using LCN station departures)."""
+    now_ts = time.time()
+    cache = BRAYFORD_CACHE
+    if cache['data'] and cache['last_updated'] and now_ts - cache['last_updated'] < BRAYFORD_CACHE_DURATION:
+        return jsonify(cache['data'])
+
+    try:
+        station_name, station_code, departures = fetch_departures_for_station('LCN', num_rows=30)
+        closures = estimate_crossing_closures_from_departures(departures, lookahead_minutes=180)
+        data = {
+            'station_name': station_name,
+            'station_code': station_code,
+            'closures': closures,
+            'fetched': datetime.datetime.now().isoformat()
+        }
+        BRAYFORD_CACHE['data'] = data
+        BRAYFORD_CACHE['last_updated'] = now_ts
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/brayford_crossing')
+def brayford_crossing():
+    return render_template('brayford_crossing.html')
 
 # from lincoln_bin_scraper import scrape_lincoln_bins
 
