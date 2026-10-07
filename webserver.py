@@ -13,6 +13,7 @@ import os
 import socket
 import requests
 import json
+import gzip
 import signal
 from xml.etree import ElementTree as ET
 from lxml import etree
@@ -49,7 +50,7 @@ PORT = 5001
 BBC_RSS_FEED = "http://feeds.bbci.co.uk/news/rss.xml"
 ONION_RSS_FEED = "https://www.theonion.com/rss"
 DAILY_MASH_RSS_FEED = "https://www.thedailymash.co.uk/feed"
-SUFFOLK_GAZETTE_RSS_FEED = "https://www.suffolkgazette.com/feed/"
+SHUTTLE_TIMETABLE_URL = "https://navigateme.lincoln.ac.uk/api/shuttle-bus/timetable"
 WEATHER_URL = "http://api.openweathermap.org/data/2.5/weather"
 AIRPORT_CODE = "HUY"
 FLIGHT_API_URL = "http://api.aviationstack.com/v1/flights"
@@ -531,10 +532,9 @@ def news():
         bbc_items = fetch_rss(BBC_RSS_FEED)
         onion_items = fetch_rss(ONION_RSS_FEED)
         mash_items = fetch_rss(DAILY_MASH_RSS_FEED)
-        suffolk_items = fetch_rss(SUFFOLK_GAZETTE_RSS_FEED)
 
         # Extract and combine articles from all sources
-        for item in bbc_items + onion_items + mash_items + suffolk_items:
+        for item in bbc_items + onion_items + mash_items:
             title = item.find("title").text
             link = item.find("link").text
             news.append({"title": title, "link": link})
@@ -1139,7 +1139,15 @@ def mcdonalds_status():
         print("Fetching fresh McDonald's data from API...")
         response = requests.get('https://mcbroken.com/markers.json', timeout=10)
         response.raise_for_status()
-        data = response.json()
+
+        # McBroken currently sends a gzip-compressed body even though its
+        # response headers are not handled consistently by all requests/
+        # urllib3 combinations. Decode it explicitly when necessary before
+        # parsing the JSON.
+        response_content = response.content
+        if response_content.startswith(b'\x1f\x8b'):
+            response_content = gzip.decompress(response_content)
+        data = json.loads(response_content)
         
         # Update cache
         mcdonalds_cache['data'] = data
@@ -1312,8 +1320,105 @@ southbound = [
     {"lawress_hall": "17:15", "lincoln_hotel": "17:25", "train_station": "17:30", "LAC": "17:35"}
 ]
 
+
+def _normalise_shuttle_stop_name(name):
+    """Normalise stop names so small punctuation/capitalisation changes do not break matching."""
+    return (
+        str(name)
+        .lower()
+        .replace('“', '')
+        .replace('”', '')
+        .replace('"', '')
+        .replace('.', '')
+        .strip()
+    )
+
+
+def _convert_shuttle_route(route, stop_aliases):
+    """Convert one online route into the dashboard's existing row format."""
+    stops = route.get('stops', [])
+    stop_indexes = {
+        _normalise_shuttle_stop_name(stop.get('name')): index
+        for index, stop in enumerate(stops)
+    }
+
+    indexes = {}
+    for dashboard_stop, aliases in stop_aliases.items():
+        for alias in aliases:
+            index = stop_indexes.get(_normalise_shuttle_stop_name(alias))
+            if index is not None:
+                indexes[dashboard_stop] = index
+                break
+
+    missing_stops = set(stop_aliases) - set(indexes)
+    if missing_stops:
+        raise ValueError(f"Online shuttle timetable is missing stops: {', '.join(sorted(missing_stops))}")
+
+    rows = []
+    for journey in route.get('journeys', []):
+        if not isinstance(journey, list) or any(index >= len(journey) for index in indexes.values()):
+            raise ValueError("Online shuttle timetable contains an invalid journey")
+
+        row = {dashboard_stop: journey[index] for dashboard_stop, index in indexes.items()}
+        if not all(isinstance(value, str) and value for value in row.values()):
+            raise ValueError("Online shuttle timetable contains an invalid departure time")
+        rows.append(row)
+
+    if not rows:
+        raise ValueError("Online shuttle timetable contains no journeys")
+    return rows
+
+
+def get_shuttle_timetable():
+    """Return the online timetable, falling back to the existing local timetable."""
+    try:
+        response = requests.get(SHUTTLE_TIMETABLE_URL, timeout=10)
+        response.raise_for_status()
+        routes = response.json()
+        routes_by_code = {route.get('code'): route for route in routes}
+
+        online_northbound = _convert_shuttle_route(
+            routes_by_code['to-riseholme'],
+            {
+                'LAC': ['Toys “R” Us', 'Toys R Us', 'LAC'],
+                'train_station': ['Train Station'],
+                'lincoln_hotel': ['Lincoln Hotel'],
+                'lawress_hall': ['Lawress Hall']
+            }
+        )
+        online_southbound = _convert_shuttle_route(
+            routes_by_code['to-brayford'],
+            {
+                'lawress_hall': ['Lawress Hall'],
+                'lincoln_hotel': ['Lincoln Hotel'],
+                'train_station': ['St Marks St.', 'St Marks St', 'Train Station'],
+                'LAC': ['Toys “R” Us', 'Toys R Us', 'LAC']
+            }
+        )
+
+        print("Using online Campus Linc shuttle timetable")
+        return {
+            'northbound': online_northbound,
+            'southbound': online_southbound,
+            'source': 'online'
+        }
+    except Exception as e:
+        print(f"Error fetching online shuttle timetable: {e}; using local fallback")
+        return {
+            'northbound': northbound,
+            'southbound': southbound,
+            'source': 'fallback'
+        }
+
+
+@app.route('/shuttle_timetable')
+def shuttle_timetable():
+    return jsonify(get_shuttle_timetable())
+
+
 @app.route('/campus_linc_bus')
 def campus_linc_bus():
+    timetable = get_shuttle_timetable()
     current_time = datetime.datetime.now().strftime('%H:%M')
 
     def get_next_departure(times):
@@ -1329,15 +1434,15 @@ def campus_linc_bus():
     next_south_times = {}
 
     for key in stop_keys:
-        north_times = [row[key] for row in northbound if row[key]]
-        south_times = [row[key] for row in southbound if row[key]]
+        north_times = [row[key] for row in timetable['northbound'] if row[key]]
+        south_times = [row[key] for row in timetable['southbound'] if row[key]]
         next_north_times[key] = get_next_departure(north_times)
         next_south_times[key] = get_next_departure(south_times)
 
     return render_template(
         'campus_linc_bus.html',
-        northbound=northbound,
-        southbound=southbound,
+        northbound=timetable['northbound'],
+        southbound=timetable['southbound'],
         current_time=current_time,
         next_north_times=next_north_times,
         next_south_times=next_south_times
@@ -1357,6 +1462,8 @@ def stop_info(stop_name):
     if not label:
         return f"<h1>Unknown stop: {stop_name}</h1>", 404
 
+    timetable = get_shuttle_timetable()
+
     # Initialize empty lists for times
     north_times = []
     south_times = []
@@ -1366,11 +1473,11 @@ def stop_info(stop_name):
 
     # Northbound departures logic
     if stop_name in ['LAC', 'train_station', 'lincoln_hotel']:
-        north_times = [trip[stop_name] for trip in northbound if stop_name in trip]
+        north_times = [trip[stop_name] for trip in timetable['northbound'] if stop_name in trip]
 
     # Southbound departures logic
     if stop_name in ['lawress_hall', 'train_station', 'lincoln_hotel']:
-        south_times = [trip[stop_name] for trip in southbound if stop_name in trip]
+        south_times = [trip[stop_name] for trip in timetable['southbound'] if stop_name in trip]
 
     # Find the next departure time
     def get_next_departure(times):

@@ -65,17 +65,18 @@
 
     <div class="info"> <!-- class="info macice-status" -->
         <h2>McDonald's Ice Cream Machines</h2>
-        <p>Ruston Road: <code id="macice-p-rust" class="mcice-unknown">unknown</code></p>
+        <p>Ruston Way: <code id="macice-p-rust" class="mcice-unknown">unknown</code></p>
         <!-- <p>13/14 Cornhill: <code id="macice-p-cor"  class="mcice-unknown">unknown</code></p> -->
         <p>323 High Street: <code id="macice-p-hs"   class="mcice-unknown">unknown</code></p>
-        <p>The Carlton Centre: <code id="macice-p-carl" class="mcice-unknown">unknown</code></p>
+        <!-- <p>The Carlton Centre: <code id="macice-p-carl" class="mcice-unknown">unknown</code></p> -->
         <p>Moorland Close: <code id="macice-p-moor" class="mcice-unknown">unknown</code></p>
+        <p>Showground Services: <code id="macice-p-showground" class="mcice-unknown">unknown</code></p>
         <p id="all-broken-message" style="color: red;"></p> <!-- New element for the message -->
     </div>
 
-    <div class="info" style="font-size: 1.5em">
+    <div class="info">
         <h2>Comment of the Moment</h2>
-        <blockquote id="quoteText">Loading...</blockquote>
+        <blockquote id="quoteText" style="font-size: 1.5em">Loading...</blockquote>
         <!-- <footer id="quoteAuthor"></footer> -->
     </div>
     
@@ -278,7 +279,29 @@
 
 
     // Bus schedule logic
-    const departures = ["07:30", "08:30", "13:00", "16:40", "17:40"];
+    const fallbackDepartures = ["07:30", "08:30", "13:00", "16:40", "17:40"];
+    let departures = [...fallbackDepartures];
+
+    async function loadShuttleTimetable() {
+        try {
+            const response = await fetch('/shuttle_timetable');
+            if (!response.ok) {
+                throw new Error(`Shuttle timetable request failed: ${response.status}`);
+            }
+
+            const timetable = await response.json();
+            const onlineDepartures = timetable.source === 'online'
+                ? (timetable.northbound || []).map(row => row.LAC).filter(Boolean)
+                : [];
+
+            departures = onlineDepartures.length ? onlineDepartures : [...fallbackDepartures];
+        } catch (error) {
+            console.error('Error fetching shuttle timetable; using local fallback:', error);
+            departures = [...fallbackDepartures];
+        }
+
+        getNextBus();
+    }
 
     function getNextBus() {
         const now = new Date();
@@ -312,8 +335,8 @@
     }
 
     // Load bus times every 10 minutes (600,000 milliseconds)
-    setInterval(getNextBus, 600000); // Adjust interval as needed
-    getNextBus(); // Initial load
+    setInterval(loadShuttleTimetable, 600000); // Refresh every 10 minutes
+    loadShuttleTimetable(); // Initial load
 
 
     function loadNews() {
@@ -630,14 +653,20 @@
         try {
             const response = await fetch("/mcdonalds_status");
             const markers = await response.json();
+
+            if (!response.ok || markers.error || !Array.isArray(markers.features)) {
+                throw new Error(markers.error || "Invalid McDonald's API response");
+            }
             
             console.log("McDonald's API fetched successfully, total features:", markers.features.length);
 
+            const normaliseLocationPart = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
             const id_map = {
-                "macice-p-rust": { "street": "Ruston Road", "city": "Lincoln" },
+                "macice-p-rust": { "street": "Ruston Way", "city": "Lincoln" },
                 "macice-p-hs": { "street": "323 High Street", "city": "Lincoln" },
                 "macice-p-carl": { "street": "The Carlton Centre", "city": "Lincoln" },
-                "macice-p-moor": { "street": "Moorland Close", "city": "Lincoln" }
+                "macice-p-moor": { "street": "Moorland Close", "city": "Lincoln" },
+                "macice-p-showground": { "street": "Showground Services", "city": "North Carlton" }
             }
 
             // Log all Lincoln McDonald's to help debug
@@ -648,8 +677,11 @@
 
             Object.keys(id_map).forEach(key => {
                 const vals = id_map[key];
+                const streets = Array.isArray(vals.street) ? vals.street : [vals.street];
                 const shop = markers.features.filter(obj => {
-                    return (obj.properties.city === vals.city && obj.properties.street === vals.street && obj.properties.country === "UK");
+                    return (normaliseLocationPart(obj.properties.city) === normaliseLocationPart(vals.city) &&
+                            normaliseLocationPart(obj.properties.country) === "uk" &&
+                            streets.some(street => normaliseLocationPart(obj.properties.street) === normaliseLocationPart(street)));
                 })[0];
 
                 const indicator = document.getElementById(key);
