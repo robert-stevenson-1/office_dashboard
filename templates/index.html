@@ -651,7 +651,7 @@
 
     async function checkMICE() {
         try {
-            const response = await fetch("/mcdonalds_status");
+            const response = await fetch("/mcdonalds_status", { cache: "no-store" });
             const markers = await response.json();
 
             if (!response.ok || markers.error || !Array.isArray(markers.features)) {
@@ -668,9 +668,10 @@
                 "macice-p-moor": { "street": "Moorland Close", "city": "Lincoln" },
                 "macice-p-showground": { "street": "Showground Services", "city": "North Carlton" }
             }
+            const features = Array.isArray(markers.features) ? markers.features : [];
 
             // Log all Lincoln McDonald's to help debug
-            const lincolnLocations = markers.features.filter(obj => obj.properties.city === "Lincoln" && obj.properties.country === "UK");
+            const lincolnLocations = features.filter(obj => obj.properties && obj.properties.city === "Lincoln" && obj.properties.country === "UK");
             console.log("All Lincoln McDonald's locations:", lincolnLocations.map(obj => obj.properties.street));
 
             let allBroken = true; // Flag to check if all are broken
@@ -678,13 +679,25 @@
             Object.keys(id_map).forEach(key => {
                 const vals = id_map[key];
                 const streets = Array.isArray(vals.street) ? vals.street : [vals.street];
-                const shop = markers.features.filter(obj => {
-                    return (normaliseLocationPart(obj.properties.city) === normaliseLocationPart(vals.city) &&
-                            normaliseLocationPart(obj.properties.country) === "uk" &&
-                            streets.some(street => normaliseLocationPart(obj.properties.street) === normaliseLocationPart(street)));
-                })[0];
+                const countries = ["uk", "gb", "united kingdom"];
+                const cities = Array.isArray(vals.city) ? vals.city : [vals.city];
+                const streetMatches = features.filter(obj => {
+                    const properties = obj.properties || {};
+                    return streets.some(street => normaliseLocationPart(properties.street) === normaliseLocationPart(street));
+                });
+                const locationMatches = streetMatches.filter(obj =>
+                    cities.some(city => normaliseLocationPart((obj.properties || {}).city) === normaliseLocationPart(city)) &&
+                    countries.includes(normaliseLocationPart((obj.properties || {}).country))
+                );
+                // If the API changes city/country naming, use the street only
+                // when it identifies exactly one restaurant.
+                const shop = locationMatches[0] || (streetMatches.length === 1 ? streetMatches[0] : undefined);
 
                 const indicator = document.getElementById(key);
+                if (!indicator) {
+                    console.warn(`Missing McDonald's status element: ${key}`);
+                    return;
+                }
                 
                 console.log(`Checking ${vals.street}:`, shop);
                 
@@ -697,11 +710,12 @@
                 }
                 
                 // Check both dot and is_broken properties for accurate status
-                if (shop.properties.dot === "working" && !shop.properties.is_broken) {
+                const properties = shop.properties || {};
+                if (properties.dot === "working" && !properties.is_broken) {
                     indicator.innerText = "Working";
                     indicator.classList = ["mcice-good"];
                     allBroken = false; // Machine is working
-                } else if (shop.properties.is_broken || shop.properties.dot === "broken") {
+                } else if (properties.is_broken || properties.dot === "broken") {
                     indicator.innerText = "Broken";
                     indicator.classList = ["mcice-bad"];
                     // Keep allBroken as true
